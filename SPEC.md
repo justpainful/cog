@@ -59,9 +59,16 @@ anything. A language with `$`, `&`, `#` and `%` makes the reader carry a table.
 **Agent constructs are syntax.** `verb`, `intent`, `on`, `every` and `needs`
 are grammar, not library calls, because they are what the language is for.
 
-**Errors before execution.** Anything checkable without running the program is
-checked: unknown names, wrong argument counts, effects that the host runtime
-cannot perform, filter keys an event never supplies.
+**Errors before execution — in the agent layer only, so far.** `cog build`
+checks everything it lowers against the host's capability table: an effect the
+host cannot perform, a permission name that is not real, a filter an event never
+supplies, a button pointing at a verb that does not exist, two things claiming
+one key.
+
+Ordinary programs get none of that yet. An unbound name, a wrong argument count
+and text added to a number are all caught, but at the moment they run and not
+before. There is no semantic pass and no type checker; writing one is a stage of
+its own and it has not been done.
 
 ---
 
@@ -197,7 +204,9 @@ count = count + 1
 Reassigning a `hold` is a compile error. Both are block-scoped, and shadowing
 an outer name in an inner block is allowed.
 
-Reading a name before it is bound is a compile error, not `none`.
+Reading a name before it is bound is an error rather than `none` — but a
+runtime one. `cog check` will not find it, because nothing yet walks the tree
+looking for names that are never bound.
 
 ---
 
