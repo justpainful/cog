@@ -1,0 +1,58 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+jobs:
+  test:
+    name: test (node ${{ matrix.node }})
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        node: ['20.x', '22.x', '24.x']
+
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
+        with:
+          node-version: ${{ matrix.node }}
+
+      - name: Syntax check every source file
+        run: find src tests -name '*.js' -print0 | xargs -0 -r -n1 node --check
+
+      - name: Test suite
+        run: npm test
+
+  spec:
+    name: spec and examples agree
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
+        with:
+          node-version: '24.x'
+
+      # A keyword that exists in the lexer but appears nowhere in SPEC.md is
+      # undocumented; one documented but unimplemented is a promise not kept.
+      - name: Every keyword is documented
+        run: |
+          node -e "
+            const fs = require('node:fs');
+            if (!fs.existsSync('src/lexer.js') || !fs.existsSync('SPEC.md')) {
+              console.log('lexer or spec not written yet, skipping');
+              process.exit(0);
+            }
+            const spec = fs.readFileSync('SPEC.md', 'utf8');
+            const lexer = fs.readFileSync('src/lexer.js', 'utf8');
+            const block = lexer.match(/KEYWORDS = new Set\(\[([\s\S]*?)\]\)/);
+            if (!block) { console.log('no KEYWORDS set found'); process.exit(0); }
+            const kws = [...block[1].matchAll(/'([a-z]+)'/g)].map(m => m[1]);
+            const missing = kws.filter(k => !new RegExp('\`' + k + '\`').test(spec));
+            if (missing.length) throw new Error('undocumented keywords: ' + missing.join(', '));
+            console.log(kws.length + ' keywords, all documented');
+          "

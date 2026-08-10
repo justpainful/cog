@@ -1,0 +1,38 @@
+{
+  "name": "cog-lang",
+  "version": "0.0.1",
+  "description": "Cog — an agent-oriented programming language. Verbs, intents and events as first-class syntax, with its own interpreter.",
+  "type": "module",
+  "license": "MIT",
+  "author": "Faisal Saud",
+  "homepage": "https://github.com/justpainful/cog",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/justpainful/cog.git"
+  },
+  "keywords": [
+    "programming-language",
+    "interpreter",
+    "agent-oriented",
+    "dsl",
+    "cog"
+  ],
+  "engines": {
+    "node": ">=20"
+  },
+  "bin": {
+    "cog": "./src/cli.js"
+  },
+  "main": "./src/index.js",
+  "files": [
+    "src/",
+    "std/",
+    "SPEC.md",
+    "GRAMMAR.ebnf"
+  ],
+  "scripts": {
+    "cog": "node src/cli.js",
+    "test": "node tests/run.js",
+    "check": "node src/cli.js check examples/*.cog"
+  }
+}
