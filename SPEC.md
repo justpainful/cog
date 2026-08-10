@@ -566,13 +566,32 @@ under      until      up         verb       wednesday  when       yes
 **None of these declares, binds or controls flow using a borrowed word.** The
 words other languages use for that work — `var` `let` `class` `struct` `func`
 `function` `if` `else` `for` `while` `return` `true` `false` `null` `import`
-`as` `in` `with` `where` `open` — do not appear anywhere in Cog.
+`as` `in` `with` `where` `open` — are not keywords in Cog. Some are perfectly
+good identifiers: `verb open` in section 11.1 declares a verb named `open`, and
+that is the point of not reserving the word.
 
 Six of them are also keywords elsewhere: `and`, `or`, `not`, `from` (Python),
 `is` (Python and Swift) and `repeat` (Swift). That is the complete overlap,
 checked by `tests/keywords.js` against the keyword sets of C, Java, JavaScript,
 Python, Rust, Go and Swift on every build. Adding a seventh fails CI until it is
 renamed or justified.
+
+## 14b. Known rough edges
+
+Found while building the editor grammar against this document. Recorded rather
+than quietly left for someone to trip over.
+
+- **`[14:30]` is ambiguous.** A clock time is one lexical token, so a map keyed
+  `14` with the value `30` cannot be written without a space: `[14 : 30]`. The
+  lexer resolves it as a time. Acceptable, and worth knowing.
+- **`x --1` is a comment.** Line comments start with `--` and unary minus
+  exists, so `x - -1` needs the space. Unavoidable given both features.
+- **`no` carries two meanings** — the boolean, and absence in
+  `needs no @channel(x)`. Position separates them, but a reader has to know.
+- **Permission names and colours are not defined here.** `read`, `write`,
+  `history` and `blue` appear in section 11 examples and come from the host's
+  capability table, the same place event names come from. This document should
+  say so where it introduces them, and currently does not.
 
 ## 15. Not in 0.1
 

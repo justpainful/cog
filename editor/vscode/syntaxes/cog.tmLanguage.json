@@ -2,18 +2,40 @@
   "$schema": "https://raw.githubusercontent.com/martinring/tmlanguage/master/tmlanguage.json",
   "name": "Cog",
   "scopeName": "source.cog",
-  "fileTypes": ["cog"],
+  "fileTypes": [
+    "cog"
+  ],
   "patterns": [
-    { "include": "#comments" },
-    { "include": "#strings" },
-    { "include": "#declarations" },
-    { "include": "#entities" },
-    { "include": "#constants" },
-    { "include": "#keywords" },
-    { "include": "#numbers" },
-    { "include": "#calls" },
-    { "include": "#parens" },
-    { "include": "#operators" }
+    {
+      "include": "#comments"
+    },
+    {
+      "include": "#strings"
+    },
+    {
+      "include": "#declarations"
+    },
+    {
+      "include": "#entities"
+    },
+    {
+      "include": "#constants"
+    },
+    {
+      "include": "#keywords"
+    },
+    {
+      "include": "#numbers"
+    },
+    {
+      "include": "#calls"
+    },
+    {
+      "include": "#parens"
+    },
+    {
+      "include": "#operators"
+    }
   ],
   "repository": {
     "comments": {
@@ -22,52 +44,70 @@
           "name": "comment.line.double-dash.cog",
           "begin": "--",
           "beginCaptures": {
-            "0": { "name": "punctuation.definition.comment.cog" }
+            "0": {
+              "name": "punctuation.definition.comment.cog"
+            }
           },
           "end": "$"
         }
       ]
     },
-
     "strings": {
       "patterns": [
-        { "include": "#string-block" },
-        { "include": "#string-line" }
+        {
+          "include": "#string-block"
+        },
+        {
+          "include": "#string-line"
+        }
       ]
     },
-
     "string-block": {
       "name": "string.quoted.double.cog",
       "begin": "\"\"\"",
       "beginCaptures": {
-        "0": { "name": "punctuation.definition.string.begin.cog" }
+        "0": {
+          "name": "punctuation.definition.string.begin.cog"
+        }
       },
       "end": "\"\"\"",
       "endCaptures": {
-        "0": { "name": "punctuation.definition.string.end.cog" }
+        "0": {
+          "name": "punctuation.definition.string.end.cog"
+        }
       },
       "patterns": [
-        { "include": "#string-escape" },
-        { "include": "#interpolation" }
+        {
+          "include": "#string-escape"
+        },
+        {
+          "include": "#interpolation"
+        }
       ]
     },
-
     "string-line": {
       "name": "string.quoted.double.cog",
       "begin": "\"",
       "beginCaptures": {
-        "0": { "name": "punctuation.definition.string.begin.cog" }
+        "0": {
+          "name": "punctuation.definition.string.begin.cog"
+        }
       },
       "end": "\"|$",
       "endCaptures": {
-        "0": { "name": "punctuation.definition.string.end.cog" }
+        "0": {
+          "name": "punctuation.definition.string.end.cog"
+        }
       },
       "patterns": [
-        { "include": "#string-escape" },
-        { "include": "#interpolation" }
+        {
+          "include": "#string-escape"
+        },
+        {
+          "include": "#interpolation"
+        }
       ]
     },
-
     "string-escape": {
       "patterns": [
         {
@@ -80,222 +120,294 @@
         }
       ]
     },
-
     "interpolation": {
       "patterns": [
-        { "include": "#interpolation-literal-at" },
-        { "include": "#interpolation-expression" },
-        { "include": "#interpolation-path" },
-        { "include": "#interpolation-empty" }
+        {
+          "include": "#interpolation-literal-at"
+        },
+        {
+          "include": "#interpolation-expression"
+        },
+        {
+          "include": "#interpolation-path"
+        },
+        {
+          "include": "#interpolation-empty"
+        }
       ]
     },
-
     "interpolation-literal-at": {
       "name": "constant.character.escape.cog",
       "match": "@@"
     },
-
     "interpolation-expression": {
       "name": "meta.embedded.line.cog",
       "begin": "(@)(\\()",
       "beginCaptures": {
-        "1": { "name": "punctuation.definition.interpolation.begin.cog" },
-        "2": { "name": "punctuation.section.interpolation.begin.cog" }
+        "1": {
+          "name": "punctuation.definition.interpolation.begin.cog"
+        },
+        "2": {
+          "name": "punctuation.section.interpolation.begin.cog"
+        }
       },
       "end": "\\)",
       "endCaptures": {
-        "0": { "name": "punctuation.section.interpolation.end.cog" }
+        "0": {
+          "name": "punctuation.section.interpolation.end.cog"
+        }
       },
-      "patterns": [{ "include": "$self" }]
+      "patterns": [
+        {
+          "include": "$self"
+        }
+      ]
     },
-
     "interpolation-path": {
       "name": "meta.embedded.line.cog",
       "match": "(@)([\\p{L}_][\\p{L}\\p{N}_]*(?:\\.[\\p{L}_][\\p{L}\\p{N}_]*)*)",
       "captures": {
-        "1": { "name": "punctuation.definition.interpolation.cog" },
-        "2": { "name": "variable.other.interpolated.cog" }
+        "1": {
+          "name": "punctuation.definition.interpolation.cog"
+        },
+        "2": {
+          "name": "variable.other.interpolated.cog"
+        }
       }
     },
-
     "interpolation-empty": {
       "name": "invalid.illegal.empty-interpolation.cog",
       "match": "@(?![@(\\p{L}_])"
     },
-
     "declarations": {
       "patterns": [
-        { "include": "#verb-declaration" },
-        { "include": "#shape-declaration" },
-        { "include": "#intent-declaration" },
-        { "include": "#bring-declaration" }
+        {
+          "include": "#verb-declaration"
+        },
+        {
+          "include": "#shape-declaration"
+        },
+        {
+          "include": "#intent-declaration"
+        },
+        {
+          "include": "#bring-declaration"
+        }
       ]
     },
-
     "verb-declaration": {
       "match": "\\b(verb)\\b(?:[ \\t]+([\\p{L}_][\\p{L}\\p{N}_]*(?:\\.[\\p{L}_][\\p{L}\\p{N}_]*)*))?",
       "captures": {
-        "1": { "name": "keyword.declaration.cog" },
-        "2": { "name": "entity.name.function.cog" }
+        "1": {
+          "name": "keyword.declaration.cog"
+        },
+        "2": {
+          "name": "entity.name.function.cog"
+        }
       }
     },
-
     "shape-declaration": {
       "match": "\\b(shape)\\b(?:[ \\t]+([\\p{L}_][\\p{L}\\p{N}_]*))?",
       "captures": {
-        "1": { "name": "keyword.declaration.cog" },
-        "2": { "name": "entity.name.type.cog" }
+        "1": {
+          "name": "keyword.declaration.cog"
+        },
+        "2": {
+          "name": "entity.name.type.cog"
+        }
       }
     },
-
     "intent-declaration": {
       "match": "\\b(intent)\\b(?:[ \\t]+([\\p{L}_][\\p{L}\\p{N}_]*))?",
       "captures": {
-        "1": { "name": "keyword.declaration.cog" },
-        "2": { "name": "entity.name.namespace.cog" }
+        "1": {
+          "name": "keyword.declaration.cog"
+        },
+        "2": {
+          "name": "entity.name.namespace.cog"
+        }
       }
     },
-
     "bring-declaration": {
       "match": "\\b(bring)\\b(?:[ \\t]+([\\p{L}_][\\p{L}\\p{N}_]*))?",
       "captures": {
-        "1": { "name": "keyword.declaration.cog" },
-        "2": { "name": "entity.name.namespace.cog" }
+        "1": {
+          "name": "keyword.declaration.cog"
+        },
+        "2": {
+          "name": "entity.name.namespace.cog"
+        }
       }
     },
-
     "entities": {
       "patterns": [
-        { "include": "#entity-call" },
-        { "include": "#entity-plain" }
+        {
+          "include": "#entity-call"
+        },
+        {
+          "include": "#entity-plain"
+        }
       ]
     },
-
     "entity-call": {
       "begin": "(@)([\\p{L}_][\\p{L}\\p{N}_]*)(\\()",
       "beginCaptures": {
-        "1": { "name": "punctuation.definition.entity.cog" },
-        "2": { "name": "variable.language.entity.cog" },
-        "3": { "name": "punctuation.section.arguments.begin.cog" }
+        "1": {
+          "name": "punctuation.definition.entity.cog"
+        },
+        "2": {
+          "name": "variable.language.entity.cog"
+        },
+        "3": {
+          "name": "punctuation.section.arguments.begin.cog"
+        }
       },
       "end": "(\\))((?:\\.[\\p{L}_][\\p{L}\\p{N}_]*)*)",
       "endCaptures": {
-        "1": { "name": "punctuation.section.arguments.end.cog" },
-        "2": { "name": "variable.language.entity.cog" }
+        "1": {
+          "name": "punctuation.section.arguments.end.cog"
+        },
+        "2": {
+          "name": "variable.language.entity.cog"
+        }
       },
-      "patterns": [{ "include": "$self" }]
+      "patterns": [
+        {
+          "include": "$self"
+        }
+      ]
     },
-
     "entity-plain": {
       "match": "(@)([\\p{L}_][\\p{L}\\p{N}_]*)((?:\\.[\\p{L}_][\\p{L}\\p{N}_]*)*)",
       "captures": {
-        "1": { "name": "punctuation.definition.entity.cog" },
-        "2": { "name": "variable.language.entity.cog" },
-        "3": { "name": "variable.language.entity.cog" }
+        "1": {
+          "name": "punctuation.definition.entity.cog"
+        },
+        "2": {
+          "name": "variable.language.entity.cog"
+        },
+        "3": {
+          "name": "variable.language.entity.cog"
+        }
       }
     },
-
     "constants": {
-      "name": "constant.language.cog",
-      "match": "\\b(none|yes|no)\\b"
+      "match": "\b(none|yes|no)\b",
+      "name": "constant.language.cog"
     },
-
     "keywords": {
       "patterns": [
-        { "include": "#keyword-declaration" },
-        { "include": "#keyword-binding" },
-        { "include": "#keyword-control" },
-        { "include": "#keyword-operator-word" },
-        { "include": "#keyword-effect" },
-        { "include": "#keyword-modifier" },
-        { "include": "#keyword-style" },
-        { "include": "#keyword-schedule" }
+        {
+          "include": "#keyword-declaration"
+        },
+        {
+          "include": "#keyword-binding"
+        },
+        {
+          "include": "#keyword-control"
+        },
+        {
+          "include": "#keyword-operator-word"
+        },
+        {
+          "include": "#keyword-effect"
+        },
+        {
+          "include": "#contextual-pinned"
+        }
       ]
     },
-
     "keyword-declaration": {
-      "name": "keyword.declaration.cog",
-      "match": "\\b(intent|bring|share|every|shape|verb|on)\\b"
+      "match": "\b(intent|shape|bring|share|every|verb|on)\b",
+      "name": "keyword.declaration.cog"
     },
-
-    "keyword-binding": {
-      "name": "keyword.declaration.cog",
-      "match": "\\b(carry|hold)\\b"
-    },
-
     "keyword-control": {
-      "name": "keyword.control.cog",
-      "match": "\\b(otherwise|attempt|repeat|rescue|until|times|each|give|stop|next|fail|when|of)\\b"
+      "match": "\b(otherwise|attempt|repeat|rescue|until|times|when|each|give|stop|next|fail|of)\b",
+      "name": "keyword.control.cog"
     },
-
     "keyword-operator-word": {
-      "name": "keyword.operator.word.cog",
-      "match": "\\b(isnt|and|not|or|is)\\b"
+      "match": "\b(isnt|and|not|or|is)\b",
+      "name": "keyword.operator.word.cog"
     },
-
     "keyword-effect": {
-      "name": "keyword.other.effect.cog",
-      "match": "\\b(revoke|rename|button|thread|needs|grant|panel|react|count|embed|make|note|post|tell|show|hide|then|say|ask)\\b"
+      "match": "\b(needs|make|then)\b",
+      "name": "keyword.other.effect.cog"
     },
-
-    "keyword-modifier": {
-      "name": "keyword.other.cog",
-      "match": "\\b(paragraph|contains|required|everyone|colour|footer|prefix|starts|suffix|under|title|body|from|line|has|at|by|to|up)\\b"
-    },
-
-    "keyword-style": {
-      "name": "support.type.cog",
-      "match": "\\b(secondary|category|primary|success|channel|danger|role)\\b"
-    },
-
-    "keyword-schedule": {
-      "name": "support.constant.cog",
-      "match": "\\b(wednesday|thursday|saturday|tuesday|monday|friday|sunday|month|day)\\b"
-    },
-
     "numbers": {
       "patterns": [
-        { "include": "#clock-time" },
-        { "include": "#duration" },
-        { "include": "#number" }
+        {
+          "include": "#clock-time"
+        },
+        {
+          "include": "#duration"
+        },
+        {
+          "include": "#number"
+        }
       ]
     },
-
     "clock-time": {
       "name": "constant.numeric.time.cog",
       "match": "\\b\\d{2}:\\d{2}\\b"
     },
-
     "duration": {
       "name": "constant.numeric.duration.cog",
       "match": "\\b\\d[\\d_]*(?:\\.\\d[\\d_]*)?[smhdw]\\b"
     },
-
     "number": {
       "name": "constant.numeric.cog",
       "match": "\\b\\d[\\d_]*(?:\\.\\d[\\d_]*)?\\b"
     },
-
     "calls": {
       "name": "entity.name.function.call.cog",
       "match": "[\\p{L}_][\\p{L}\\p{N}_]*(?=\\()"
     },
-
     "parens": {
       "begin": "\\(",
       "beginCaptures": {
-        "0": { "name": "punctuation.section.group.begin.cog" }
+        "0": {
+          "name": "punctuation.section.group.begin.cog"
+        }
       },
       "end": "\\)",
       "endCaptures": {
-        "0": { "name": "punctuation.section.group.end.cog" }
+        "0": {
+          "name": "punctuation.section.group.end.cog"
+        }
       },
-      "patterns": [{ "include": "$self" }]
+      "patterns": [
+        {
+          "include": "$self"
+        }
+      ]
     },
-
     "operators": {
       "name": "keyword.operator.cog",
       "match": "->|<=|>=|[-+*/%<>=]"
+    },
+    "contextual-pinned": {
+      "patterns": [
+        {
+          "match": "(?<=\bmakes{1,20})\b(channel|category|role)\b",
+          "name": "support.type.cog"
+        },
+        {
+          "match": "(?<=\beverys{1,20})\b(day|month|monday|tuesday|wednesday|thursday|friday|saturday|sunday)\b",
+          "name": "support.constant.cog"
+        },
+        {
+          "match": "\b(primary|secondary|success|danger)\b(?=s{0,20}->)",
+          "name": "support.type.cog"
+        },
+        {
+          "match": "(?<=\bneedss{1,20})\b(no)\b",
+          "name": "keyword.operator.word.cog"
+        }
+      ]
+    },
+    "keyword-binding": {
+      "match": "\b(carry|hold)\b",
+      "name": "keyword.declaration.cog"
     }
   }
 }
