@@ -1,0 +1,101 @@
+-- std/time.cog — durations and clock times.
+--
+-- Cog has two literals that produce plain numbers, and both count SECONDS:
+--
+--   a duration, `5m` or `2h`               — `5m` is 300
+--   a clock time, seconds since midnight   — `14:30` is 52200
+--
+-- They used to disagree, the clock counting minutes while a duration counted
+-- seconds, with nothing at runtime able to tell them apart. `describe(14:30)`
+-- answered "14m 30s" and looked plausible. One unit now, so it cannot.
+
+bring text "std/text"
+
+hold A_MINUTE = 60
+hold AN_HOUR = 3600
+hold A_DAY = 86400
+hold A_DAY_OF_MINUTES = 1440
+
+-- --------------------------------------------------------- building durations
+
+--- A duration of n seconds, which is n. Here so that `time.seconds(n)` reads
+--- beside its neighbours rather than being the one that is bare arithmetic.
+share verb seconds(n) {
+  give n
+}
+
+--- A duration of n minutes, in seconds. `time.minutes(5)` is `5m`.
+share verb minutes(n) {
+  give n * A_MINUTE
+}
+
+--- A duration of n hours, in seconds. `time.hours(2)` is `2h`.
+share verb hours(n) {
+  give n * AN_HOUR
+}
+
+--- A duration of n days, in seconds. `time.days(3)` is `3d`.
+share verb days(n) {
+  give n * A_DAY
+}
+
+-- --------------------------------------------------------- reading durations
+
+--- A duration in seconds read as a count of minutes, fraction and all.
+share verb as_minutes(duration) {
+  give duration / A_MINUTE
+}
+
+--- A duration in seconds read as a count of hours.
+share verb as_hours(duration) {
+  give duration / AN_HOUR
+}
+
+--- A duration in seconds written the way a person says it: "2h 30m", "1m 30s",
+--- "1d", "0s". Parts that are zero are left out, unless every one of them is.
+--- A negative duration keeps its sign at the front.
+share verb describe(duration) {
+  hold negative = duration < 0
+  carry left = when negative { 0 - duration } otherwise { duration }
+  carry parts = []
+
+  hold day_count = (left / A_DAY).floor
+  when day_count > 0 {
+    parts = parts + ["@(day_count)d"]
+    left = left - day_count * A_DAY
+  }
+
+  hold hour_count = (left / AN_HOUR).floor
+  when hour_count > 0 {
+    parts = parts + ["@(hour_count)h"]
+    left = left - hour_count * AN_HOUR
+  }
+
+  hold minute_count = (left / A_MINUTE).floor
+  when minute_count > 0 {
+    parts = parts + ["@(minute_count)m"]
+    left = left - minute_count * A_MINUTE
+  }
+
+  when left > 0 or parts.size is 0 {
+    parts = parts + ["@(left)s"]
+  }
+
+  hold body = parts.join(" ")
+  when negative { give "-" + body }
+  give body
+}
+
+-- ------------------------------------------------------------- clock times
+
+--- Seconds since midnight written as a clock: `time.clock_text(14:30)` is
+--- "14:30", and so is `time.clock_text(52200)`. Times outside a day wrap round
+--- it, so a day plus an hour is "01:00" and -30m is "23:30", which is what
+--- clock arithmetic wants.
+share verb clock_text(since_midnight) {
+  carry wrapped = since_midnight.floor % A_DAY
+  when wrapped < 0 { wrapped = wrapped + A_DAY }
+  hold hour = (wrapped / AN_HOUR).floor
+  hold minute = ((wrapped % AN_HOUR) / A_MINUTE).floor
+  give text.pad_left("@hour", 2, "0") + ":" + text.pad_left("@minute", 2, "0")
+}

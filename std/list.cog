@@ -1,0 +1,185 @@
+-- std/list.cog — the list operations the native methods do not cover.
+--
+-- Lists already answer size, empty, first, last, reversed, sorted, has, join,
+-- slice, plus, without, at, map, keep, drop, find, every, some and fold. What
+-- follows is written out of those.
+--
+-- Note that `drop` here is not the native `drop`: `xs.drop(test)` throws items
+-- away by asking a verb, while `list.drop(xs, n)` throws away the first n.
+
+-- The two-argument comparison used by min, max and sort_by. `<` is defined for
+-- two numbers or two texts and refuses anything else, which is the behaviour
+-- these verbs want.
+verb before(a, b) {
+  give a < b
+}
+
+-- ---------------------------------------------------------------- arithmetic
+
+--- Every number added together. The sum of nothing is 0.
+share verb sum(xs) {
+  give xs.fold(0, verb (total, x) { give total + x })
+}
+
+--- Every number multiplied together. The product of nothing is 1.
+share verb product(xs) {
+  give xs.fold(1, verb (total, x) { give total * x })
+}
+
+--- The smallest item. An empty list has no smallest item, so this fails.
+share verb min(xs) {
+  when xs.size is 0 { fail "min needs at least one item" }
+  carry best = xs[0]
+  each x of xs {
+    when before(x, best) { best = x }
+  }
+  give best
+}
+
+--- The largest item.
+share verb max(xs) {
+  when xs.size is 0 { fail "max needs at least one item" }
+  carry best = xs[0]
+  each x of xs {
+    when before(best, x) { best = x }
+  }
+  give best
+}
+
+-- ------------------------------------------------------------------- shaping
+
+--- The items in their original order, with later repeats left out.
+share verb unique(xs) {
+  carry out = []
+  each x of xs {
+    when not out.has(x) { out = out + [x] }
+  }
+  give out
+}
+
+--- One level of nesting removed. Items that are not lists are kept as they are.
+share verb flatten(xs) {
+  carry out = []
+  each x of xs {
+    when kind(x) is "list" {
+      out = out + x
+    } otherwise {
+      out = out + [x]
+    }
+  }
+  give out
+}
+
+--- Pairs taken from two lists, stopping at the end of the shorter one.
+share verb zip(xs, ys) {
+  hold count = when xs.size < ys.size { xs.size } otherwise { ys.size }
+  carry out = []
+  each i of range(0, count) {
+    out = out + [[xs[i], ys[i]]]
+  }
+  give out
+}
+
+--- The list cut into pieces of `n`. The last piece is short if the list does
+--- not divide evenly.
+share verb chunk(xs, n) {
+  when not n.whole or n < 1 { fail "chunk needs a whole size of at least one" }
+  carry out = []
+  carry current = []
+  each x of xs {
+    current = current + [x]
+    when current.size is n {
+      out = out + [current]
+      current = []
+    }
+  }
+  when current.size > 0 { out = out + [current] }
+  give out
+}
+
+--- The first `n` items. Asking for more than there are gives all of them, and
+--- asking for none or fewer gives an empty list.
+share verb take(xs, n) {
+  when n <= 0 { give [] }
+  give xs.slice(0, n)
+}
+
+--- Everything after the first `n` items.
+share verb drop(xs, n) {
+  when n <= 0 { give xs.slice(0) }
+  give xs.slice(n)
+}
+
+-- ----------------------------------------------------------------- searching
+
+--- Where `value` first appears, or `none` when it does not. `none` rather than
+--- -1, because absence is spelled `none` everywhere else in Cog.
+share verb index_of(xs, value) {
+  each i of range(0, xs.size) {
+    when xs[i] is value { give i }
+  }
+  give none
+}
+
+--- How many items the given verb answers yes to.
+share verb count_where(xs, test) {
+  carry found = 0
+  each x of xs {
+    when test(x) { found = found + 1 }
+  }
+  give found
+}
+
+--- A map from the key a verb computes to the list of items that gave that key.
+--- Keys keep the order they were first seen in, and so do the items.
+share verb group_by(xs, key) {
+  hold out = [:]
+  each x of xs {
+    hold k = key(x)
+    when out.has(k) {
+      out[k] = out[k] + [x]
+    } otherwise {
+      out[k] = [x]
+    }
+  }
+  give out
+}
+
+-- -------------------------------------------------------------------- sorting
+
+-- Merge sort, so the order of items with equal keys is kept. `sorted` orders
+-- by the item itself; this orders by whatever a verb says about the item.
+verb merge(left, right, key) {
+  carry out = []
+  carry i = 0
+  carry j = 0
+  repeat until i >= left.size and j >= right.size {
+    when j >= right.size {
+      out = out + [left[i]]
+      i = i + 1
+      next
+    }
+    when i >= left.size {
+      out = out + [right[j]]
+      j = j + 1
+      next
+    }
+    -- Only strictly smaller keys jump the queue, which is what makes this
+    -- stable.
+    when before(key(right[j]), key(left[i])) {
+      out = out + [right[j]]
+      j = j + 1
+    } otherwise {
+      out = out + [left[i]]
+      i = i + 1
+    }
+  }
+  give out
+}
+
+--- The list ordered by what `key` says about each item.
+share verb sort_by(xs, key) {
+  when xs.size <= 1 { give xs.slice(0) }
+  hold middle = (xs.size / 2).floor
+  give merge(sort_by(xs.slice(0, middle), key), sort_by(xs.slice(middle), key), key)
+}

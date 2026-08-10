@@ -1,3 +1,0 @@
-share verb title(s) { give s.uppercase }
-share hold answer = 42
-verb secret { give 1 }

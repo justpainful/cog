@@ -424,8 +424,18 @@ export function parse(source, file = '<input>') {
         after.line === tk.line && after.column === tk.column + String(tk.value).length;
       const opensGroup = after.type === T.PUNCT && (after.value === '[' || after.value === '(');
 
+      // A minus that hugs what follows it and has space before is unary, so
+      // `note -n` is an effect on a negative number rather than a subtraction
+      // from a variable named note. `n - 1` still subtracts.
+      const unaryMinus =
+        after.type === T.OP &&
+        after.value === '-' &&
+        !adjacent &&
+        peek(2).line === after.line &&
+        peek(2).column === after.column + 1;
+
       const continues =
-        (after.type === T.OP) ||
+        (after.type === T.OP && !unaryMinus) ||
         (opensGroup && adjacent) ||
         (after.type === T.PUNCT && ['=', '.', ',', ')', '}', ']', ':'].includes(after.value));
       if (continues) return null;

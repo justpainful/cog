@@ -120,9 +120,16 @@ string. A visible mistake beats a silent one.
 ### 2.5 Durations and clock times
 
 ```cog
-30s   5m   2h   3d   1w         -- duration
-00:03   14:30                   -- clock time, used by `every`
+30s   5m   2h   3d   1w         -- duration, in seconds
+00:03   14:30                   -- clock time, seconds since midnight
 ```
+
+Both are counts of seconds, so a clock and a duration can be compared and added
+without a conversion. They did not start that way: a clock counted minutes while
+a duration counted seconds, both arrived as bare numbers, and
+`time.describe(14:30)` answered `"14m 30s"` with nothing able to notice. Two
+literals in one family with different units and no runtime distinction is a trap
+rather than a shorthand.
 
 ### 2.6 Booleans and absence
 
@@ -338,6 +345,10 @@ note text.upper("hi")
 
 Paths starting `std/` resolve to the standard library; others resolve relative
 to the importing file. Import cycles are an error.
+
+Reading a name a module does not share is an error naming the module and listing
+what it does share. A module knows every name it exports, so a typo is knowable
+before the call rather than something to meet as `none` a line later.
 
 ---
 

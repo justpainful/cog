@@ -4,3 +4,7 @@ out/
 .env
 .DS_Store
 desktop.ini
+
+# scratch files while developing a module
+scratch_*.cog
+_*.cog

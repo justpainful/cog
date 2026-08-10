@@ -1,0 +1,154 @@
+-- std/text.cog — the text operations the native methods do not cover.
+--
+-- Text already answers size, uppercase, lowercase, trimmed, reversed, empty,
+-- has, starts, ends, split, replace, slice, repeat and padded. Nothing here
+-- repeats those; everything here is built out of them.
+
+-- Whitespace is whatever `trimmed` removes, which keeps this agreeing with the
+-- native method instead of carrying a private list of space characters. It also
+-- catches the ones Cog cannot write as an escape, such as a carriage return.
+verb is_space(c) {
+  give c.trimmed.size is 0
+}
+
+-- Characters that separate words in a slug. Whitespace is handled separately,
+-- so this is punctuation only. `\@` is a literal at-sign; `\\` a backslash.
+hold SEPARATORS = "_-./\\|,;:!?'\"()[]{}<>\@#$%^&*+=~`“”‘’«»–—…"
+
+verb is_separator(c) {
+  give is_space(c) or SEPARATORS.has(c)
+}
+
+-- A trailing carriage return, which `split("\n")` leaves on every line of a
+-- file written on Windows. Cog has no `\r` escape, so the test is "whitespace
+-- that is neither a space nor a tab".
+verb without_return(piece) {
+  when piece.size is 0 { give piece }
+  hold last = piece[piece.size - 1]
+  when is_space(last) and last isnt " " and last isnt "\t" {
+    give piece.slice(0, piece.size - 1)
+  }
+  give piece
+}
+
+-- --------------------------------------------------------------- the surface
+
+--- Text that is empty or made only of whitespace.
+share verb is_blank(s) {
+  give s.trimmed.size is 0
+}
+
+--- Capitalise the first letter of every whitespace-separated word, and
+--- lowercase the rest, so "cog IS good" becomes "Cog Is Good". All the original
+--- whitespace is kept.
+share verb title(s) {
+  carry out = ""
+  carry fresh = yes
+  each c of s {
+    when is_space(c) {
+      out = out + c
+      fresh = yes
+      next
+    }
+    when fresh {
+      out = out + c.uppercase
+    } otherwise {
+      out = out + c.lowercase
+    }
+    fresh = no
+  }
+  give out
+}
+
+--- Pad on the left until the text is `width` wide. A filler of more than one
+--- character repeats and is cut to fit. Text already at least that wide is
+--- returned unchanged.
+share verb pad_left(s, width, filler = " ") {
+  when filler.size is 0 { fail "pad_left needs a filler of at least one character" }
+  when s.size >= width { give s }
+  hold gap = width - s.size
+  give filler.repeat(gap).slice(0, gap) + s
+}
+
+--- Pad on the right. The same rules as pad_left.
+share verb pad_right(s, width, filler = " ") {
+  when filler.size is 0 { fail "pad_right needs a filler of at least one character" }
+  when s.size >= width { give s }
+  hold gap = width - s.size
+  give s + filler.repeat(gap).slice(0, gap)
+}
+
+--- How many times `needle` appears in `haystack`, without overlaps.
+share verb count_of(haystack, needle) {
+  when needle.size is 0 { fail "count_of needs something to look for" }
+  give haystack.split(needle).size - 1
+}
+
+--- The lines of some text. A trailing newline does not make a final empty
+--- line, and `lines("")` is the empty list.
+share verb lines(s) {
+  carry out = []
+  each piece of s.split("\n") {
+    out = out + [without_return(piece)]
+  }
+  when out.size > 0 and out[out.size - 1] is "" {
+    out = out.slice(0, out.size - 1)
+  }
+  give out
+}
+
+--- The whitespace-separated words, with the empty ones left out.
+share verb words(s) {
+  carry out = []
+  carry current = ""
+  each c of s {
+    when is_space(c) {
+      when current.size > 0 { out = out + [current] }
+      current = ""
+      next
+    }
+    current = current + c
+  }
+  when current.size > 0 { out = out + [current] }
+  give out
+}
+
+--- Remove `prefix` from the front if it is there, and change nothing if it is
+--- not.
+share verb strip_prefix(s, prefix) {
+  when prefix.size > 0 and s.starts(prefix) { give s.slice(prefix.size) }
+  give s
+}
+
+--- Remove `suffix` from the end if it is there.
+share verb strip_suffix(s, suffix) {
+  when suffix.size > 0 and s.ends(suffix) { give s.slice(0, s.size - suffix.size) }
+  give s
+}
+
+--- Cut text down to `n` characters, counting the ending. Text that already
+--- fits comes back untouched.
+share verb truncate(s, n, ending = "…") {
+  when n <= 0 { give "" }
+  when s.size <= n { give s }
+  when ending.size >= n { give ending.slice(0, n) }
+  give s.slice(0, n - ending.size) + ending
+}
+
+--- A lowercase form safe for a name or a URL: runs of whitespace and
+--- punctuation become one dash, and there are no dashes at either end.
+--- Letters Cog cannot case-fold, such as Arabic or Han, are kept as they are.
+share verb slug(s) {
+  carry out = ""
+  carry pending = no
+  each c of s {
+    when is_separator(c) {
+      pending = yes
+      next
+    }
+    when pending and out.size > 0 { out = out + "-" }
+    pending = no
+    out = out + c.lowercase
+  }
+  give out
+}

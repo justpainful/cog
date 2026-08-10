@@ -17,6 +17,10 @@ import {
 } from './values.js';
 import { installBuiltins, callMethod, hasMethod } from './builtins.js';
 
+// Marks a Map as a module, so a missing name can name the module it is
+// missing from. A plain map's missing key stays `none`.
+const MODULE = Symbol('module');
+
 // ---- control flow signals ---------------------------------------------------
 
 class GiveSignal {
@@ -358,6 +362,7 @@ export class Interpreter {
       this.loading.delete(node.path);
     }
 
+    exported[MODULE] = node.path;
     this.modules.set(node.path, exported);
     scope.declare(node.name, exported, { fixed: true });
   }
@@ -370,7 +375,10 @@ export class Interpreter {
       case 'Truth': return node.value;
       case 'None': return NONE;
       case 'Duration': return node.seconds;
-      case 'Clock': return node.hours * 60 + node.minutes;
+      // Seconds since midnight, so a clock and a duration share one unit.
+      // They were minutes and seconds respectively, both bare numbers, which
+      // made time.describe(14:30) answer "14m 30s" with nothing to catch it.
+      case 'Clock': return node.hours * 3600 + node.minutes * 60;
 
       case 'Text': return this.text(node, scope);
 
@@ -552,9 +560,18 @@ export class Interpreter {
     }
 
     if (isMap(target)) {
-      // A module is a map of shared names, so `text.upper` reads as a field.
       if (target.has(name)) return target.get(name);
       if (hasMethod(target, name)) return callMethod(this, target, name, [], node);
+
+      // A module is a map of shared names and knows every one of them, so a
+      // typo is knowable rather than something to discover as `none` later.
+      if (target[MODULE]) {
+        throw this.fail(
+          `"${target[MODULE]}" does not share "${name}"`,
+          node,
+          `it shares ${[...target.keys()].sort().join(', ')}`,
+        );
+      }
       return NONE;
     }
 

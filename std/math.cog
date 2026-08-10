@@ -1,0 +1,188 @@
+-- std/math.cog — arithmetic that the number methods do not cover.
+--
+-- Numbers already answer rounded, floor, ceiling, absolute, text and whole.
+-- Everything below is written in Cog, including the square root and the
+-- exponential, so nothing here needs a new native.
+
+bring list "std/list"
+
+hold LN2 = 0.6931471805599453
+hold ROOT2 = 1.4142135623730951
+hold HALF_ROOT2 = 0.7071067811865476
+
+-- ------------------------------------------------------------------- rounding
+
+--- `value` held inside `low` and `high`.
+share verb clamp(value, low, high) {
+  when low > high { fail "clamp needs a low that is not above the high" }
+  when value < low { give low }
+  when value > high { give high }
+  give value
+}
+
+--- -1, 0 or 1, saying which side of zero a number is on.
+share verb sign(n) {
+  when n < 0 { give 0 - 1 }
+  when n > 0 { give 1 }
+  give 0
+}
+
+--- Whether a whole number divides by two. A number that is not whole is
+--- neither even nor odd.
+share verb is_even(n) {
+  give n.whole and n % 2 is 0
+}
+
+--- Whether a whole number does not divide by two.
+share verb is_odd(n) {
+  give n.whole and n % 2 isnt 0
+}
+
+-- ------------------------------------------------------------------ divisors
+
+--- The largest whole number that divides both, by Euclid. gcd(0, 0) is 0.
+share verb gcd(a, b) {
+  when not a.whole or not b.whole { fail "gcd needs two whole numbers" }
+  carry x = a.absolute
+  carry y = b.absolute
+  repeat until y is 0 {
+    hold rest = x % y
+    x = y
+    y = rest
+  }
+  give x
+}
+
+--- The smallest whole number both divide into. Zero is involved in nothing, so
+--- lcm with zero is zero.
+share verb lcm(a, b) {
+  when a is 0 or b is 0 { give 0 }
+  give (a * b).absolute / gcd(a, b)
+}
+
+--- n * (n - 1) * … * 1, and 1 for zero.
+share verb factorial(n) {
+  when not n.whole or n < 0 { fail "factorial needs a whole number that is not negative" }
+  carry total = 1
+  carry i = 2
+  repeat until i > n {
+    total = total * i
+    i = i + 1
+  }
+  give total
+}
+
+-- ----------------------------------------------------------------- summaries
+
+--- The mean of some numbers. There is no mean of nothing, so that fails.
+share verb average(xs) {
+  when xs.size is 0 { fail "average needs at least one number" }
+  give list.sum(xs) / xs.size
+}
+
+--- The middle number once they are ordered, or the mean of the middle two when
+--- there is an even count of them.
+share verb median(xs) {
+  when xs.size is 0 { fail "median needs at least one number" }
+  hold ordered = xs.sorted
+  hold middle = (ordered.size / 2).floor
+  when is_odd(ordered.size) { give ordered[middle] }
+  give (ordered[middle - 1] + ordered[middle]) / 2
+}
+
+-- ------------------------------------------------------------------- powers
+
+-- Exponentiation by squaring: exact for whole exponents, which is why `power`
+-- checks for one before reaching for the exponential.
+verb whole_power(base, exponent) {
+  when exponent < 0 {
+    hold upward = whole_power(base, 0 - exponent)
+    when upward is 0 { fail "power cannot raise zero to a negative exponent" }
+    give 1 / upward
+  }
+  carry result = 1
+  carry doubling = base
+  carry left = exponent
+  repeat until left is 0 {
+    when is_odd(left) { result = result * doubling }
+    doubling = doubling * doubling
+    left = (left / 2).floor
+  }
+  give result
+}
+
+-- The natural logarithm. The number is first pushed into [√½, √2) by halving
+-- or doubling — each step costs exactly one ln 2 — and what is left is close
+-- enough to 1 that the series for 2·atanh((m-1)/(m+1)) settles in a dozen
+-- terms. Accurate to within a couple of units in the last place.
+verb ln(x) {
+  when x <= 0 { fail "ln needs a number above zero" }
+  carry doublings = 0
+  carry m = x
+  repeat until m < ROOT2 {
+    m = m / 2
+    doublings = doublings + 1
+  }
+  repeat until m >= HALF_ROOT2 {
+    m = m * 2
+    doublings = doublings - 1
+  }
+  hold z = (m - 1) / (m + 1)
+  hold square = z * z
+  carry term = z
+  carry total = z
+  carry i = 1
+  repeat until i > 30 {
+    term = term * square
+    total = total + term / (2 * i + 1)
+    i = i + 1
+  }
+  give doublings * LN2 + 2 * total
+}
+
+-- e to the x. The same idea the other way round: take out the nearest whole
+-- number of ln 2 so the remainder is under a half of it, then let the Taylor
+-- series run.
+verb exp(x) {
+  hold halvings = (x / LN2).rounded
+  hold rest = x - halvings * LN2
+  carry term = 1
+  carry total = 1
+  carry i = 1
+  repeat until i > 20 {
+    term = term * rest / i
+    total = total + term
+    i = i + 1
+  }
+  give total * whole_power(2, halvings)
+}
+
+--- `base` raised to `exponent`. A whole exponent is worked out exactly by
+--- repeated squaring; anything else goes through the logarithm and is accurate
+--- to about fifteen digits.
+share verb power(base, exponent) {
+  when exponent.whole { give whole_power(base, exponent) }
+  when base is 0 { give 0 }
+  when base < 0 {
+    fail "power cannot raise a negative number to a fractional exponent"
+  }
+  give exp(exponent * ln(base))
+}
+
+--- The square root, by Newton's method. Exact for the numbers that have an
+--- exact root, and within a unit in the last place for the rest.
+share verb sqrt(n) {
+  when n < 0 { fail "sqrt needs a number that is not negative" }
+  when n is 0 { give 0 }
+  carry guess = n
+  carry previous = 0
+  carry steps = 0
+  -- The guess either settles or begins alternating between two neighbouring
+  -- doubles, so the step count is the second way out.
+  repeat until guess is previous or steps > 100 {
+    previous = guess
+    guess = (guess + n / guess) / 2
+    steps = steps + 1
+  }
+  give guess
+}

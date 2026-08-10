@@ -5,7 +5,7 @@ import { dirname, join } from 'node:path';
 import { existsSync } from 'node:fs';
 
 const HERE = dirname(fileURLToPath(import.meta.url));
-const SUITES = ['keywords.js', 'spec-sync.js', 'lexer.js', 'parser.js', 'interpret.js', 'lower.js'];
+const SUITES = ['keywords.js', 'spec-sync.js', 'lexer.js', 'parser.js', 'interpret.js', 'lower.js', 'std.js'];
 
 let failed = 0;
 for (const suite of SUITES) {
