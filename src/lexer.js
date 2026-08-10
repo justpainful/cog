@@ -139,6 +139,9 @@ export function tokenize(source, file = '<input>') {
     if (ch === '"') {
       const isBlock = at(1) === '"' && at(2) === '"';
       i += isBlock ? 3 : 1;
+      // A block text starts on the line after the opening quotes, so that first
+      // newline belongs to the layout rather than to the text.
+      if (isBlock && source[i] === '\n') newline();
       const parts = [];
       let literal = '';
 
@@ -163,6 +166,9 @@ export function tokenize(source, file = '<input>') {
 
         if (isBlock && source[i] === '"' && at(1) === '"' && at(2) === '"') {
           i += 3;
+          // And the closing quotes sit on their own line, so the newline that
+          // put them there is layout too.
+          literal = literal.replace(/\n[ \t]*$/, '');
           break;
         }
         if (!isBlock && source[i] === '"') {
@@ -238,14 +244,47 @@ export function tokenize(source, file = '<input>') {
           }
 
           let path = '';
+          let named = false;
           while (i < source.length && isIdentPart(source[i])) path += source[i++];
+
+          // A named entity: @channel("welcome") inside text. The parentheses are
+          // taken as part of the interpolation, quotes and all, so the quote
+          // inside does not end the text around it. Without this the only way
+          // to name a channel in a sentence was @(@channel("x").mention), and
+          // naming a channel in a sentence is most of what text is for.
+          if (source[i] === '(') {
+            let depth = 0;
+            const from = i;
+            do {
+              if (i >= source.length) {
+                throw new LexError('this interpolation is never closed', {
+                  file, line: interpLine, column: interpCol, length: 1, source,
+                  hint: 'a ( inside text needs a matching )',
+                });
+              }
+              if (source[i] === '(') depth++;
+              else if (source[i] === ')') depth--;
+              else if (source[i] === '\n') newline();
+              i++;
+            } while (depth > 0);
+            path += source.slice(from, i);
+            named = true;
+          }
+
           // dotted path, but only while a letter follows the dot
           while (source[i] === '.' && isLetter(at(1) ?? '')) {
             path += source[i++];
             while (i < source.length && isIdentPart(source[i])) path += source[i++];
           }
           flush();
-          parts.push({ kind: 'interp', expression: path, line: interpLine, column: interpCol });
+          // A named entity keeps its @, because what follows has to be read as
+          // an entity and not as a call to a verb of the same name.
+          parts.push({
+            kind: 'interp',
+            expression: named ? `@${path}` : path,
+            line: interpLine,
+            column: interpCol,
+          });
           continue;
         }
 

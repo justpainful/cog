@@ -16,6 +16,7 @@ declaration    = bringDecl
                | shapeDecl
                | intentDecl
                | verbDecl
+               | commandDecl
                | onDecl
                | everyDecl
                | statement ;
@@ -39,7 +40,12 @@ path           = identifier , { "." , identifier } ;
 
 (* ------------------------------------------------------------- agent decls *)
 
-intentDecl     = "intent" , identifier , "{" , { verbDecl | onDecl | everyDecl } , "}" ;
+intentDecl     = "intent" , identifier ,
+                 "{" , { verbDecl | commandDecl | onDecl | everyDecl } , "}" ;
+
+(* `command` is not reserved. It heads a declaration only where a name and then
+   a block or a parameter list follow it. *)
+commandDecl    = "command" , identifier , [ "(" , [ params ] , ")" ] , block ;
 
 onDecl         = "on" , eventName , [ "when" , filter ] , block ;
 eventName      = identifier , "." , identifier ;          (* member.joins *)
@@ -98,7 +104,7 @@ block          = "{" , { statement | declaration } , "}" ;
 agentStmt      = needsStmt | sayStmt | postStmt | tellStmt | noteStmt
                | makeStmt | threadStmt | renameStmt
                | grantStmt | revokeStmt | permStmt
-               | reactStmt | countStmt | panelStmt | askStmt ;
+               | reactStmt | countStmt | panelStmt | askStmt | presenceStmt ;
 
 needsStmt      = "needs" , predicate ;
 
@@ -113,7 +119,7 @@ predTerm       = "not" , predTerm
                | "(" , predicate , ")" ;
 
 sayStmt        = "say" , expression , [ "to" , "everyone" ] ;
-postStmt       = "post" , entity , ( expression | embed ) ;
+postStmt       = "post" , entity , ( expression | embed ) , [ embed ] , [ "mentioning" ] ;
 tellStmt       = "tell" , entity , ( expression | embed ) ;
 noteStmt       = "note" , expression ;
 
@@ -124,7 +130,8 @@ embedField     = "title" , expression
                | "footer" , expression ;
 
 makeStmt       = "make" , makeKind , expression ,
-                 [ "under" , entity ] , [ permBlock ] , [ thenBlock ] ;
+                 [ "under" , entity ] , [ "topic" , expression ] ,
+                 [ permBlock ] , [ thenBlock ] ;
 makeKind       = "channel" | "category" | "role" ;
 permBlock      = "{" , { permLine } , "}" ;
 permLine       = ( "show" | "hide" ) , entity , [ "[" , permList , "]" ] ;
@@ -144,15 +151,19 @@ revokeStmt     = "revoke" , entity , [ "from" , entity ] ;
 permStmt       = ( "show" | "hide" ) , entity , [ "[" , permList , "]" ] , [ "at" , entity ] ;
 
 reactStmt      = "react" , expression ;
-countStmt      = "count" , identifier , "up" , [ "by" , expression ] , [ thenBlock ] ;
+countStmt      = "count" , identifier , "up" , [ "by" , expression ] ,
+                 [ "padded" , expression ] , [ thenBlock ] ;
 
-panelStmt      = "panel" , "at" , entity , "{" , { buttonLine } , "}" ;
-buttonLine     = "button" , text , [ buttonStyle ] , "->" , path ,
-                 [ "(" , [ arguments ] , ")" ] ;
+presenceStmt   = "presence" , identifier , expression , [ "at" , expression ] ;
+
+panelStmt      = "panel" , "at" , entity , [ text ] , "{" , { buttonLine } , "}" ;
+buttonLine     = "button" , text , [ buttonStyle ] , [ text ] , "->" , path ,
+                 [ "(" , [ arguments ] , ")" ] ;      (* the second text is an emoji *)
 buttonStyle    = "primary" | "secondary" | "success" | "danger" ;
 
 askStmt        = "ask" , [ text ] , "{" , { askField } , "}" , "then" , path ;
-askField       = ( "line" | "paragraph" ) , text , [ "required" ] ;
+askField       = ( "line" | "paragraph" ) , text ,
+                 [ "named" , identifier ] , [ "max" , expression ] , [ "required" ] ;
 
 (* ------------------------------------------------------------ expressions *)
 
@@ -213,7 +224,10 @@ text           = '"' , { textChar | interpolation } , '"'
                | '"""' , { ? any character ? } , '"""' ;
 textChar       = ? any character except '"' '\' '@' ? | escape ;
 escape         = "\" , ( "n" | "r" | "t" | '"' | "\" | "@" ) ;
-interpolation  = "@" , ( path | "(" , expression , ")" ) ;
+(* @channel("welcome").mention inside text: the parentheses are part of the
+   interpolation, so the quotes inside do not end the text around it. *)
+interpolation  = "@" , ( path , [ "(" , expression , ")" ] , { "." , identifier }
+                       | "(" , expression , ")" ) ;
 
 comment        = "--" , { ? any character except newline ? } ;
 

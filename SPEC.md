@@ -1,8 +1,9 @@
 # The Cog Language Specification
 
-**Version 0.1 — design draft.** Nothing here is implemented yet. This document
-is written first so the grammar is decided rather than discovered while writing
-a parser.
+**Version 0.1.** This document was written before the parser, so the grammar
+was decided rather than discovered. It has been kept in step since: every code
+block below is lexed and parsed by the test suite, and the reserved-word lists
+in §14 are generated from the implementation.
 
 ---
 
@@ -457,17 +458,28 @@ the person who triggered it is told.
 | `say "…" to everyone` | answer publicly |
 | `post @channel(x) "…"` | send to a channel |
 | `post @channel(x) embed { title "…" body "…" colour blue }` | send a card |
+| `post @channel(x) "…" embed { … } mentioning` | text and a card, allowed to ping |
 | `tell @user "…"` | direct message |
 | `note "…"` | write to the log |
-| `make channel "name" under @category(x) { … }` | create, with permissions |
+| `make channel "name" under @category(x) topic "…" { … }` | create, with permissions |
 | `thread "name" at @channel(x)` | create a thread |
 | `rename target to "name"` / `prefix "x"` / `suffix "x"` | rename |
+| `rename @guild to "name"` | rename the server |
 | `grant @role(x) to @user` / `revoke @role(x) from @user` | roles |
 | `show @user [read, write]` / `hide @everyone` | permissions |
 | `react "👀"` | react to the message in context |
-| `count name up by 1` | bump a persistent counter |
-| `panel at @channel(x) { button "Label" style -> verb(args) }` | post controls |
+| `count name up by 1 padded 3` | bump a persistent counter |
+| `panel at @channel(x) "…" { button "Label" style "🔒" -> verb(args) }` | post controls |
 | `ask "Title" { line "reason" } then verb` | open a form, then run a verb |
+| `presence watching "the Registry"` | what the bot appears to be doing |
+
+A `post` does not ping anybody unless it says `mentioning`. A row that runs on
+every join could otherwise mention a hundred people at once, and defaulting the
+loud way round is not a thing anyone asks for twice.
+
+Colours are named by the host: `green`, `red`, `blue`, `yellow`, `orange`,
+`purple`, `grey`, `black`, `white`, `blurple`. Any number also works, for a
+colour with no name.
 
 ### 11.3b ask
 
@@ -492,6 +504,16 @@ answer arrives under its label, lowercased with the spaces turned to
 underscores, and is read as `@field.<name>` in the verb that follows. Two labels
 that slug to the same name is an error, since one answer would silently replace
 the other.
+
+The slug keeps letters in every script, so an Arabic label produces an Arabic
+name. Where that reads badly, `named` says what to call the answer and `max`
+says how much someone may type:
+
+```cog
+ask "اسم السيرفر" {
+  line "الاسم الجديد" named name max 100 required
+} then rename_guild_do
+```
 
 A host limits how many fields fit in one box, and Cog refuses at build time
 rather than dropping the extras.

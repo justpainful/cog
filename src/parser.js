@@ -102,11 +102,30 @@ export function parse(source, file = '<input>') {
     if (atKeyword('verb') && !isAnonVerb()) return verbDecl();
     if (atKeyword('on')) return onDecl();
     if (atKeyword('every')) return everyDecl();
+    if (isCommandDecl()) return commandDecl();
     return statement();
   };
 
   // `verb (` is an anonymous verb expression; `verb name` is a declaration.
   const isAnonVerb = () => peek(1).type === T.PUNCT && peek(1).value === '(';
+
+  // `command` is not reserved, so it is only a declaration where a name and
+  // either a parameter list or a block follow it. Everywhere else it is an
+  // ordinary name, which is what it deserves to be.
+  const isCommandDecl = () =>
+    atWord('command') &&
+    peek(1).type === T.IDENT &&
+    peek(2).type === T.PUNCT &&
+    (peek(2).value === '{' || peek(2).value === '(');
+
+  const commandDecl = () => {
+    const tk = advance();
+    const name = identName('a command name');
+    let params = [];
+    if (atPunct('(')) params = paramList();
+    const body = block();
+    return node('Command', tk, { name, params, body });
+  };
 
   const bringDecl = () => {
     const tk = advance();
@@ -207,7 +226,8 @@ export function parse(source, file = '<input>') {
       if (atKeyword('verb')) body.push(verbDecl());
       else if (atKeyword('on')) body.push(onDecl());
       else if (atKeyword('every')) body.push(everyDecl());
-      else fail('an intent holds verbs, on blocks and every blocks', `found ${describeToken(peek())}`);
+      else if (isCommandDecl()) body.push(commandDecl());
+      else fail('an intent holds verbs, commands, on blocks and every blocks', `found ${describeToken(peek())}`);
     }
     expectPunct('}');
     return node('Intent', tk, { name, body });
@@ -496,7 +516,14 @@ export function parse(source, file = '<input>') {
     if (atWord('post')) {
       advance();
       const target = entityExpr();
-      return node('Post', tk, { target, value: messageBody() });
+      const value = messageBody();
+      // A message may carry a line of text and a card, which is how you greet
+      // somebody by name above a panel that says the rest.
+      const embed = value.kind !== 'Embed' && atWord('embed') ? embedLiteral() : null;
+      // A post does not ping anybody unless it says so, because a row that
+      // runs on every join could otherwise mention a hundred people at once.
+      const mentioning = atWord('mentioning') ? (advance(), true) : false;
+      return node('Post', tk, { target, value, embed, mentioning });
     }
     if (atWord('tell')) {
       advance();
@@ -577,12 +604,36 @@ export function parse(source, file = '<input>') {
         advance();
         by = expression();
       }
+      // `padded 3` gives 007 rather than 7, which is what makes a counter
+      // useful for naming things.
+      let padded = null;
+      if (atWord('padded')) {
+        advance();
+        padded = expression();
+      }
       const then = atKeyword('then') ? (advance(), block()) : null;
-      return node('Count', tk, { name, by, then });
+      return node('Count', tk, { name, by, padded, then });
     }
     if (atWord('panel')) return panelStmt();
     if (atWord('ask')) return askStmt();
+    if (atWord('presence')) return presenceStmt();
     return null;
+  };
+
+  /**
+   * What the bot appears to be doing. One line rather than a block, because it
+   * is one fact: `presence watching "the Registry"`.
+   */
+  const presenceStmt = () => {
+    const tk = advance();
+    const activity = identName('an activity such as watching or playing');
+    const text = expression();
+    let url = null;
+    if (atWord('at')) {
+      advance();
+      url = expression();
+    }
+    return node('Presence', tk, { activity, text, url });
   };
 
   const messageBody = () => (atWord('embed') ? embedLiteral() : expression());
@@ -612,9 +663,14 @@ export function parse(source, file = '<input>') {
     const what = advance().value;
     const name = expression();
     let under = null;
+    let topic = null;
     if (atWord('under')) {
       advance();
       under = entityExpr();
+    }
+    if (atWord('topic')) {
+      advance();
+      topic = expression();
     }
     let permissions = [];
     if (atPunct('{')) {
@@ -633,7 +689,7 @@ export function parse(source, file = '<input>') {
       expectPunct('}');
     }
     const then = atKeyword('then') ? (advance(), block()) : null;
-    return node('Make', tk, { what, name, under, permissions, then });
+    return node('Make', tk, { what, name, under, topic, permissions, then });
   };
 
   const permissionList = () => {
@@ -652,6 +708,8 @@ export function parse(source, file = '<input>') {
     const tk = advance();
     expectWord('at', 'a panel needs a channel: panel at @here { … }');
     const target = entityExpr();
+    // Text before the block is the message the buttons sit under.
+    const message = at(T.TEXT) ? node('Text', peek(), { parts: textParts(advance()) }) : null;
     expectPunct('{');
     const buttons = [];
     while (!atPunct('}')) {
@@ -660,15 +718,18 @@ export function parse(source, file = '<input>') {
       const labelToken = expect(T.TEXT, undefined, 'a button label in quotes');
       let style = 'primary';
       if ((peek().type === T.IDENT || peek().type === T.KEYWORD) && BUTTON_STYLES.has(peek().value)) style = advance().value;
+      // A second piece of text is the emoji on the button. It comes after the
+      // style so a button reads label, look, then icon.
+      const emoji = at(T.TEXT) ? node('Text', peek(), { parts: textParts(advance()) }) : null;
       expect(T.OP, '->', '"->"', 'a button points at a verb: button "Close" -> tickets.close');
       const verb = path('a verb name');
       let args = [];
       if (atPunct('(')) args = argumentList();
-      buttons.push(node('Button', btnTk, { label: textParts(labelToken), style, verb, args }));
+      buttons.push(node('Button', btnTk, { label: textParts(labelToken), style, emoji, verb, args }));
     }
     expectPunct('}');
     if (!buttons.length) fail('a panel with no buttons does nothing', 'add a button line', tk);
-    return node('Panel', tk, { target, buttons });
+    return node('Panel', tk, { target, message, buttons });
   };
 
   const askStmt = () => {
@@ -686,12 +747,18 @@ export function parse(source, file = '<input>') {
       const fieldTk = peek();
       const shape = advance().value;
       const labelToken = expect(T.TEXT, undefined, 'a field label in quotes');
+      // The answer is read back by name, and the name comes from the label
+      // unless the label makes a poor one.
+      const name = atWord('named') ? (advance(), identName('a name for the answer')) : null;
+      // How much someone may type. Worth having in the language rather than
+      // trusting the box, because a name that has to fit somewhere is a rule.
+      const max = atWord('max') ? (advance(), expression()) : null;
       let required = false;
       if (atWord('required')) {
         advance();
         required = true;
       }
-      fields.push(node('AskField', fieldTk, { shape, label: textParts(labelToken), required }));
+      fields.push(node('AskField', fieldTk, { shape, label: textParts(labelToken), name, max, required }));
     }
     expectPunct('}');
     expectKeyword('then', 'an ask hands off to a verb: ask { … } then tickets.open');

@@ -21,7 +21,11 @@ export const COGNITION = {
     Note: { kind: 'log' },
     Make: { kind: { channel: 'channel_create', category: 'channel_create', role: 'role_create' } },
     Thread: { kind: 'thread_create' },
-    Rename: { kind: 'channel_edit' },
+    // Renaming the guild is a different primitive from renaming a channel, so
+    // the target decides which one a rename becomes.
+    Rename: { kind: 'channel_edit', guild: 'guild_edit' },
+    Presence: { kind: 'presence_set' },
+    Command: { kind: 'reply' },
     Grant: { kind: 'role_grant' },
     Revoke: { kind: 'role_revoke' },
     Permission: { kind: 'overwrite_set' },
@@ -119,6 +123,30 @@ export const COGNITION = {
     maxFields: 5,
     shapes: { line: 'short', paragraph: 'paragraph' },
   },
+
+  // ---- the rest of the surface --------------------------------------------
+
+  // Colours by name, so an embed can say `colour green` instead of 3066993.
+  // A number still works for anything not listed.
+  colours: {
+    green: 0x2ecc71,
+    red: 0xe74c3c,
+    blue: 0x3498db,
+    yellow: 0xf1c40f,
+    orange: 0xe67e22,
+    purple: 0x9b59b6,
+    grey: 0x95a5a6,
+    black: 0x23272a,
+    white: 0xffffff,
+    blurple: 0x5865f2,
+  },
+
+  // What a bot can appear to be doing.
+  activities: ['playing', 'streaming', 'listening', 'watching', 'custom', 'competing'],
+
+  // A slash command is reached through a component whose key is this prefix
+  // plus the command's name, which is how the host routes one.
+  command: { componentKind: 'command', keyPrefix: 'cmd:', actionPrefix: 'cmd.' },
 
   // Entities that name something and need an id resolved before the host can
   // act on them.

@@ -34,10 +34,14 @@ export const HARD = new Set([
 export const SOFT = new Set([
   // effect heads
   'say', 'post', 'tell', 'note', 'grant', 'revoke', 'show', 'hide',
-  'react', 'count', 'panel', 'button', 'ask', 'thread', 'rename',
+  'react', 'count', 'panel', 'button', 'ask', 'thread', 'rename', 'presence',
+  // A slash command reads as a declaration but is not reserved: the grammar
+  // only sees it where a name and a block follow.
+  'command',
   // prepositions and modifiers
   'at', 'to', 'from', 'under', 'by', 'up', 'prefix', 'suffix',
   'required', 'starts', 'contains', 'everyone', 'has', 'line', 'paragraph',
+  'topic', 'padded', 'mentioning', 'named', 'max',
   // embed fields
   'embed', 'title', 'body', 'colour', 'footer',
   // make kinds and button styles

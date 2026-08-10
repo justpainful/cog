@@ -13,15 +13,16 @@ runtime.
 [![CI](https://github.com/justpainful/cog/actions/workflows/ci.yml/badge.svg)](https://github.com/justpainful/cog/actions/workflows/ci.yml)
 [![License](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
 [![Node](https://img.shields.io/badge/node-%E2%89%A520-5FA04E?logo=node.js&logoColor=white)](https://nodejs.org)
-[![Status](https://img.shields.io/badge/status-in%20design-orange)](SPEC.md)
+[![Status](https://img.shields.io/badge/status-working-2ea44f)](CAPABILITIES.md)
 
 </div>
 
 ---
 
-> **Status: in design.** The specification is being written first, on purpose.
-> Nothing here runs yet. Watch [SPEC.md](SPEC.md) — the language is settled
-> there before a line of the interpreter is written.
+> **Status: it works.** `cog run` executes programs, `cog build` compiles the
+> agent layer onto a live runtime, and the system Cog was written for has been
+> rewritten in it and compared against the running original row by row.
+> [CAPABILITIES.md](CAPABILITIES.md) says what it is and is not good for.
 
 ## Why
 
@@ -77,8 +78,8 @@ second is what makes it worth having: agent declarations become configuration a
 running system can load, validated against that system's actual capabilities.
 
 ```
-cog build examples/tickets.cog --ids ids.json --out tickets.json
-examples/tickets.cog: 4 actions, 1 trigger, 1 schedule, 1 component, 1 counter
+cog build systems/*.cog --ids ids.json --out registry.json
+5 files: 12 actions, 3 triggers, 1 schedule, 3 components, 1 counter → registry.json
 ```
 
 Nothing from Cog is alive at the other end. The output is data: once the host
@@ -109,6 +110,7 @@ rather than as ceremony. The logical operators `and`, `or`, `not`, `is` and
 | **Failure** | `attempt` / `rescue` · `fail` |
 | **Agent** | `intent` · `on` · `every` · `needs` · `make` · `then` |
 | **Effects** | `say` · `post` · `tell` · `note` · `grant` · `show` / `hide` · `count` |
+| **Controls** | `panel` / `button` · `ask` · `command` · `presence` |
 
 `@` marks an entity or an interpolation — `@user`, `@channel("welcome")`,
 `@made`, and `"hello @user.name"` inside a string. Write `@@` for a literal one.
@@ -125,11 +127,14 @@ rather than as ceremony. The logical operators `and`, `or`, `not`, `is` and
 ## Layout
 
 ```
-src/     lexer · parser · ast · resolver · interpret · lower · cli
-std/     the standard library, written in Cog where it can be
-tests/   .cog programs paired with their expected output
-editor/  VS Code extension and the TextMate grammar
-SPEC.md  the reference specification
+src/              lexer · parser · interpret · capability · lower · cli
+std/              the standard library, written in Cog
+tests/            629 of them, run by `npm test`
+editor/vscode/    the extension and its TextMate grammar
+scripts/          editor and Windows installers, icon tools
+SPEC.md           the reference specification
+GRAMMAR.ebnf      the grammar on its own
+CAPABILITIES.md   what Cog is and is not good for
 ```
 
 ## License

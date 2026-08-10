@@ -218,7 +218,7 @@ export class Interpreter {
       case 'Say': case 'Post': case 'Tell': case 'Make': case 'Thread':
       case 'Rename': case 'Grant': case 'Revoke': case 'Permission':
       case 'React': case 'Count': case 'Panel': case 'Ask': case 'Needs':
-      case 'Intent': case 'On': case 'Every':
+      case 'Intent': case 'On': case 'Every': case 'Presence': case 'Command':
         throw this.fail(
           `"${this.effectName(node)}" acts on a host runtime, and cog run has none`,
           node,
@@ -236,6 +236,7 @@ export class Interpreter {
       Rename: 'rename', Grant: 'grant', Revoke: 'revoke', Permission: 'show/hide',
       React: 'react', Count: 'count', Panel: 'panel', Ask: 'ask', Needs: 'needs',
       Intent: 'intent', On: 'on', Every: 'every',
+      Presence: 'presence', Command: 'command',
     };
     return names[node.kind] ?? node.kind;
   }

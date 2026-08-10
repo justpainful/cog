@@ -73,6 +73,22 @@ const makeLoader = (fromFile) => (path) => {
 
 let failures = 0;
 
+// Several files build into one document, because a system is usually more than
+// one file and a host loads a document rather than a directory.
+const built = [];
+let buildIds = {};
+if (command === 'build') {
+  const idsPath = option('ids');
+  if (typeof idsPath === 'string') {
+    const at = resolve(idsPath);
+    if (!existsSync(at)) {
+      console.error(`no ids file at ${at}`);
+      process.exit(2);
+    }
+    buildIds = JSON.parse(readFileSync(at, 'utf8'));
+  }
+}
+
 for (const name of files) {
   const file = resolve(name);
   if (!existsSync(file)) {
@@ -120,46 +136,8 @@ for (const name of files) {
     }
 
     if (command === 'build') {
-      const idsPath = option('ids');
-      let ids = {};
-      if (typeof idsPath === 'string') {
-        const at = resolve(idsPath);
-        if (!existsSync(at)) {
-          console.error(`no ids file at ${at}`);
-          failures++;
-          continue;
-        }
-        ids = JSON.parse(readFileSync(at, 'utf8'));
-      }
-
-      const document = lower(ast, { file: name, source, ids });
-      if (option('stamp')) document.exported_at = new Date().toISOString();
-
-      const counts = [
-        [document.actions.length, 'action'],
-        [document.triggers.length, 'trigger'],
-        [document.schedules.length, 'schedule'],
-        [document.components.length, 'component'],
-        [document.counters.length, 'counter'],
-      ]
-        .filter(([n]) => n)
-        .map(([n, word]) => `${n} ${word}${n === 1 ? '' : 's'}`)
-        .join(', ');
-
-      if (!counts) {
-        console.error(`${name}: nothing to build — this file declares no verb, on or every`);
-        failures++;
-        continue;
-      }
-
-      const out = option('out');
-      const text = `${JSON.stringify(document, null, 2)}\n`;
-      if (typeof out === 'string') {
-        writeFileSync(resolve(out), text);
-        console.log(`${name}: ${counts} → ${out}`);
-      } else {
-        process.stdout.write(text);
-      }
+      const document = lower(ast, { file: name, source, ids: buildIds });
+      built.push({ name, document });
       continue;
     }
 
@@ -184,6 +162,65 @@ for (const name of files) {
       if (process.env.COG_DEBUG) console.error(problem.stack);
     }
     failures++;
+  }
+}
+
+if (command === 'build' && !failures) {
+  const document = {
+    exported_at: option('stamp') ? new Date().toISOString() : null,
+    guild_id: buildIds.guild ? String(buildIds.guild) : null,
+    actions: [],
+    triggers: [],
+    schedules: [],
+    components: [],
+    counters: [],
+  };
+
+  // Two files may bump the same counter, which is one counter. Two files
+  // claiming the same action key is a collision, and it is worth saying which
+  // files disagree rather than letting the later one win.
+  const from = new Map();
+  for (const { name, document: part } of built) {
+    for (const table of ['actions', 'triggers', 'schedules', 'components']) {
+      for (const row of part[table]) {
+        const seen = from.get(`${table}:${row.key}`);
+        if (seen) {
+          console.error(`"${row.key}" is declared in both ${seen} and ${name}`);
+          failures++;
+          continue;
+        }
+        from.set(`${table}:${row.key}`, name);
+        document[table].push(row);
+      }
+    }
+    for (const counter of part.counters) {
+      if (!document.counters.some((c) => c.key === counter.key)) document.counters.push(counter);
+    }
+  }
+
+  const counts = [
+    [document.actions.length, 'action'],
+    [document.triggers.length, 'trigger'],
+    [document.schedules.length, 'schedule'],
+    [document.components.length, 'component'],
+    [document.counters.length, 'counter'],
+  ]
+    .filter(([n]) => n)
+    .map(([n, word]) => `${n} ${word}${n === 1 ? '' : 's'}`)
+    .join(', ');
+
+  if (!counts) {
+    console.error('nothing to build — no file here declares an intent, on or every');
+    failures++;
+  } else if (!failures) {
+    const out = option('out');
+    const text = `${JSON.stringify(document, null, 2)}\n`;
+    if (typeof out === 'string') {
+      writeFileSync(resolve(out), text);
+      console.log(`${files.length} file${files.length === 1 ? '' : 's'}: ${counts} → ${out}`);
+    } else {
+      process.stdout.write(text);
+    }
   }
 }
 

@@ -205,12 +205,27 @@ export function lower(
 
   // ---- statements to actions -------------------------------------------------
 
+  /** A colour by name, or any number for one that has no name. */
+  const colourOf = (node, ctx) => {
+    if (node.kind === 'Name') {
+      const known = host.colours[node.name];
+      if (known === undefined) {
+        return fail(`"${node.name}" is not a colour this host names`, node,
+          `it names ${Object.keys(host.colours).join(', ')}, and any number also works`);
+      }
+      return known;
+    }
+    const value = Number(text(node, ctx));
+    if (!Number.isFinite(value)) return fail('a colour is a name or a number', node);
+    return value;
+  };
+
   const embedOf = (node, ctx) => {
     const embed = {};
     if (node.fields.title) embed.title = text(node.fields.title, ctx);
     if (node.fields.body) embed.description = text(node.fields.body, ctx);
     if (node.fields.footer) embed.footer = text(node.fields.footer, ctx);
-    if (node.fields.colour) embed.color = Number(text(node.fields.colour, ctx));
+    if (node.fields.colour) embed.color = colourOf(node.fields.colour, ctx);
     return embed;
   };
 
@@ -288,7 +303,12 @@ export function lower(
       case 'Post':
         return {
           kind: 'message_send',
-          params: { channel_id: entityTemplate(node.target, ctx), ...messagePayload(node.value, ctx) },
+          params: {
+            channel_id: entityTemplate(node.target, ctx),
+            ...messagePayload(node.value, ctx),
+            ...(node.embed ? { embed: embedOf(node.embed, ctx) } : {}),
+            ...(node.mentioning ? { allow_mentions: true } : {}),
+          },
         };
 
       case 'Tell':
@@ -327,11 +347,43 @@ export function lower(
 
       case 'Rename': {
         const field = node.mode === 'to' ? 'name' : node.mode === 'prefix' ? 'name_prefix' : 'name_suffix';
+        // Renaming the server is its own primitive, and it only takes a name.
+        if (node.target.kind === 'Entity' && node.target.name === 'guild') {
+          if (node.mode !== 'to') {
+            return fail(`the server can be renamed to something, not ${node.mode}ed`, node,
+              'write: rename @guild to "name"');
+          }
+          return { kind: 'guild_edit', params: { name: text(node.value, ctx) } };
+        }
         return {
           kind: 'channel_edit',
           params: {
             channel_id: entityTemplate(node.target, ctx),
             [field]: text(node.value, ctx),
+          },
+        };
+      }
+
+      case 'Presence': {
+        if (!host.activities.includes(node.activity)) {
+          return fail(`"${node.activity}" is not something this host can appear to be doing`, node,
+            `it knows ${host.activities.join(', ')}`);
+        }
+        if (node.activity === 'streaming' && !node.url) {
+          return fail('streaming needs somewhere to be streaming from', node,
+            'write: presence streaming "Cognition" at "https://…"');
+        }
+        return {
+          kind: 'presence_set',
+          params: {
+            status: 'online',
+            activities: [
+              {
+                activity: node.activity,
+                text: text(node.text, ctx),
+                ...(node.url ? { url: text(node.url, ctx) } : {}),
+              },
+            ],
           },
         };
       }
@@ -345,6 +397,7 @@ export function lower(
       case 'Count': {
         counters.add(node.name);
         const params = { key: node.name, by: node.by ? Number(text(node.by, ctx)) : 1 };
+        if (node.padded) params.pad = Number(text(node.padded, ctx));
         if (node.then) params.then = blockAction(node.then, ctx);
         return { kind: 'counter_bump', params };
       }
@@ -360,6 +413,7 @@ export function lower(
           : { name: text(node.name, ctx), type: node.what === 'category' ? 'category' : 'text' };
 
         if (node.under) params.parent_id = entityTemplate(node.under, ctx);
+        if (node.topic) params.topic = text(node.topic, ctx);
         if (node.permissions.length) params.overwrites = node.permissions.map((p) => overwriteOf(p, ctx));
         if (node.then) params.then = blockAction(node.then, ctx);
         return { kind: effect.kind, params };
@@ -377,11 +431,19 @@ export function lower(
           return {
             label,
             style: button.style,
+            ...(button.emoji ? { emoji: text(button.emoji, ctx) } : {}),
             component_key: key,
             args: button.args.map((a) => text(a.value, ctx)),
           };
         });
-        return { kind: 'panel_send', params: { channel_id: entityTemplate(node.target, ctx), buttons } };
+        return {
+          kind: 'panel_send',
+          params: {
+            channel_id: entityTemplate(node.target, ctx),
+            ...(node.message ? { content: text(node.message, ctx) } : {}),
+            buttons,
+          },
+        };
       }
 
       case 'When': {
@@ -434,13 +496,25 @@ export function lower(
         const fields = node.fields.map((f) => {
           const label = f.label.map((p) => (p.kind === 'literal' ? p.value : '')).join('');
           if (!label) fail('an ask field needs a label that is plain text', f);
-          // The name the answer arrives under is the label, slugged. It has to
-          // be stable, because the verb on the other side reads @field.<name>.
-          const key = label.toLowerCase().replace(/[^a-z0-9]+/g, '_').replace(/^_|_$/g, '');
-          if (!key) fail(`"${label}" leaves nothing to name the answer`, f, 'give the field a label with letters in it');
+          // The name the answer arrives under is the label, slugged, unless the
+          // ask said otherwise. It has to be stable, because the verb on the
+          // other side reads @field.<name>. The slug keeps every letter in
+          // every script, since a language with Unicode identifiers has no
+          // business turning an Arabic label into nothing at all.
+          const key = f.name ?? label.toLowerCase().replace(/[^\p{L}\p{N}]+/gu, '_').replace(/^_|_$/g, '');
+          if (!key) {
+            fail(`"${label}" leaves nothing to name the answer`, f,
+              'give the field a label with letters in it, or say: named something');
+          }
           if (keys.has(key)) fail(`two fields here are both read as @field.${key}`, f, 'give them different labels');
           keys.add(key);
-          return { key, label, style: host.ask.shapes[f.shape], required: f.required };
+          return {
+            key,
+            label,
+            style: host.ask.shapes[f.shape],
+            required: f.required,
+            ...(f.max ? { max: Number(text(f.max, ctx)) } : {}),
+          };
         });
         return {
           kind: host.ask.kind,
@@ -571,6 +645,32 @@ export function lower(
         // Only inside an intent. At the top level it is an ordinary function.
         if (prefix) verbAction(node, prefix);
         return;
+
+      case 'Command': {
+        // A slash command is a door, not a mechanism: the host registers the
+        // name with Discord, and what comes through it is a row like any other.
+        const { keyPrefix, actionPrefix, componentKind } = host.command;
+        const key = `${actionPrefix}${node.name}`;
+        const ctx = { interactive: true, prefix, params: paramMap(node.params, node), guardHere: true };
+
+        const guards = node.body.body.filter((s) => s.kind === 'Needs');
+        if (guards.length > 1) fail('a command has one needs', guards[1], 'join the conditions with and');
+
+        actions.push({
+          key,
+          ...blockAction(node.body, ctx),
+          requires: guards.length ? predicate(guards[0].predicate, ctx) : null,
+          confirm: false,
+          note: null,
+        });
+        components.push({
+          key: `${keyPrefix}${node.name}`,
+          kind: componentKind,
+          action_key: key,
+          spec: { name: node.name },
+        });
+        return;
+      }
 
       case 'On': {
         const entry = eventEntry(node.event, node);
