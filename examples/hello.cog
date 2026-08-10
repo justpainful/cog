@@ -1,0 +1,113 @@
+-- hello.cog — every construct in the language, so the colours are visible
+
+bring text "std/text"
+
+-- ---------------------------------------------------------------- the core
+
+hold greeting = "hello"
+hold limit = 1_000
+carry count = 0
+
+-- `count`, `title` and `line` are ordinary names here. They mean something
+-- only inside the constructs that expect them, which is why this is legal.
+hold title = "a plain name, not a keyword"
+hold line = 42
+
+shape Ticket {
+  owner
+  opened = no
+  tags = []
+}
+
+verb greet(name, using = greeting) {
+  give using + " " + name
+}
+
+verb tally(numbers) {
+  carry total = 0
+  each n of numbers {
+    when n < 0 { next }
+    total = total + n
+  }
+  give total
+}
+
+verb classify(n) {
+  give when n > 100 { "many" } otherwise when n > 0 { "some" } otherwise { "none" }
+}
+
+-- text, interpolation, and a literal at-sign
+hold who = "kuroi"
+note "@greeting @who, you are number @(count + 1)"
+note "write to me @@example, not @who"
+
+-- lists, maps, durations, times
+hold names = ["kuroi", "cog"]
+hold scores = [kuroi: 10, cog: 20]
+hold wait = 5m
+hold nothing = none
+
+repeat until count > 3 {
+  count = count + 1
+}
+
+repeat 2 times {
+  note "again"
+}
+
+attempt {
+  when limit < 1 { fail "the limit makes no sense" }
+  note classify(limit)
+} rescue problem {
+  note "could not: @problem.message"
+}
+
+-- ------------------------------------------------------------ agent layer
+
+intent tickets {
+
+  verb open {
+    needs no @channel("ticket-@user.name")
+
+    make channel "ticket-@user.name" under @category("Tickets") {
+      hide @everyone
+      show @user             [read, write, history]
+      show @role("Operator") [read, write, manage]
+    }
+
+    then {
+      panel at @made {
+        button "Close" danger -> tickets.close(@made)
+      }
+      post @channel("ticket-log") embed {
+        title "Ticket opened"
+        body  "@made.mention by @user.mention"
+      }
+      say "your ticket is @made.mention"
+    }
+  }
+
+  verb close(target) {
+    needs @user has @role("Operator")
+    rename target prefix "closed-"
+    tell @user "closed @target.mention"
+    say "done"
+  }
+}
+
+on member.joins {
+  count members up by 1
+  post @channel("welcome") "welcome @user.mention, you are number @count"
+}
+
+on message.posted when contains "cog" and at @channel("general") {
+  react "👀"
+}
+
+every day at 00:03 {
+  post @channel("command-log") "── @today ──"
+}
+
+every 5m {
+  note "still here"
+}
