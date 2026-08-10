@@ -1,0 +1,47 @@
+-- A ticket system, whole, in one file.
+--
+-- Nothing here runs. `cog build examples/tickets.cog --ids ids.json` turns it
+-- into rows a host stores, and from then on the buttons work because the rows
+-- are there. This file is the source of the system, not a program that serves it.
+
+intent tickets {
+
+  verb open {
+    -- One ticket each. The host checks this before the row runs, so a second
+    -- press gets a refusal rather than a second channel.
+    needs no @channel("ticket-@user.name")
+
+    make channel "ticket-@user.name" under @category("Tickets") {
+      hide @everyone
+      show @user [read, write, history]
+      show @role("Operator") [read, write, manage]
+    }
+
+    then {
+      panel at @made {
+        button "Close" danger -> close(@made)
+      }
+      post @channel("ticket-log") embed {
+        title "Ticket opened"
+        body "@made.mention by @user.mention"
+      }
+      say "Your ticket is open: @made.mention"
+    }
+  }
+
+  verb close(target) {
+    needs @user has @role("Operator")
+    rename target prefix "closed-"
+    post @channel("ticket-log") "Closed @target.mention, by @user.mention"
+    say "Closed"
+  }
+}
+
+on member.joins {
+  count members up by 1
+  post @channel("welcome") "Welcome @user.mention, you are member number @count"
+}
+
+every day at 00:03 {
+  post @channel("command-log") "-- @today --"
+}

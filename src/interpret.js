@@ -430,6 +430,14 @@ export class Interpreter {
       case 'Index': return this.index(node, scope);
       case 'Call': return this.call(node, scope);
 
+      case 'PredHas': case 'PredIs': case 'PredExists': case 'PredAbsent':
+      case 'PredAll': case 'PredAny': case 'PredNot':
+        throw this.fail(
+          'this asks a host runtime a question, and cog run has none',
+          node,
+          'predicates belong to the agent layer; use cog build to lower them onto a host',
+        );
+
       default:
         throw this.fail(`cannot evaluate a ${node.kind}`, node);
     }

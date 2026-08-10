@@ -108,6 +108,13 @@ t('when otherwise when', () => first('when a { } otherwise when b { }').alternat
 t('when as a value', () => first('hold x = when a { 1 } otherwise { 2 }').value.kind === 'WhenValue');
 t('nested when as a value', () => first('hold x = when a { 1 } otherwise when b { 2 } otherwise { 3 }').value.alternate.kind === 'WhenValue');
 throws('when-value needs otherwise', 'hold x = when a { 1 }', 'needs an otherwise');
+// A when in an agent verb asks the host a question, so its test is read as a
+// predicate when it looks like one.
+t('when on a role', () => first('when @user has @role("Op") { }').test.kind === 'PredHas');
+t('when on an absent channel', () => first('when no @channel("x") { }').test.kind === 'PredAbsent');
+t('when on two conditions', () => first('when @user has @role("a") and @user has @role("b") { }').test.kind === 'PredAll');
+t('a list asking itself is not a predicate', () => first('when out.has(x) { }').test.kind === 'Call');
+t('has followed by a call is not a predicate', () => first('when has(x) { }').test.kind === 'Call');
 t('each', () => kindOf('each x of xs { }') === 'Each');
 t('each with a key', () => first('each k, v of m { }').key === 'k');
 throws('each needs of', 'each x in xs { }', 'each item of items');

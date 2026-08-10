@@ -238,6 +238,22 @@ hold label = when count > 0 { "some" } otherwise { "none" }
 Only `no` and `none` are falsy. Zero and empty text are true, because "is this
 list empty" should be written as `items.size is 0`.
 
+Inside an agent verb, `when` asks the host a question instead, so its test is a
+predicate (§11.2):
+
+```cog
+when @user has @role("Operator") {
+  say "go ahead"
+} otherwise {
+  say "not for you"
+}
+```
+
+A test is read as a predicate when it opens with `no @…` or when `has` sits
+between two entities. `out.has(x)` is a list asking itself a question and stays
+an ordinary expression, which is why the rule looks at what surrounds `has`
+rather than at the word alone.
+
 ### 6.2 each
 
 ```cog
@@ -390,8 +406,13 @@ intent tickets {
 ```
 
 An `intent` groups verbs under a name and becomes their key prefix:
-`tickets.open`. It is the unit a reader should be able to hold in their head —
+`tickets.open`. It is the unit a reader should be able to hold in their head:
 one goal and the verbs that serve it.
+
+**An agent verb is a verb inside an `intent`, and only that.** A verb at the top
+level of a file is an ordinary function: it can loop, it can hold values, it can
+return, and `cog build` walks straight past it. That line is what lets one file
+be a program and a system at once without either half constraining the other.
 
 ### 11.2 needs
 
@@ -447,6 +468,25 @@ then {
 ```
 
 `@made` outside a `then` is a compile error.
+
+A statement that introduces a name lends it only to its own `then`, so when one
+of them has no `then`, it takes the rest of its block as one. These two are the
+same system:
+
+```cog
+count members up by 1
+post @channel("welcome") "you are number @count"
+```
+
+```cog
+count members up by 1 then {
+  post @channel("welcome") "you are number @count"
+}
+```
+
+This applies to `make`, `thread` and `count`, the three statements that bind
+`@made` or `@count`. Reading order and scope then say the same thing, which is
+the point: a line below `count` can talk about the count.
 
 ### 11.5 on
 
@@ -512,8 +552,15 @@ failure with a message naming what was looked for.
 
 ## 13. Lowering
 
-`cog build` turns agent declarations into a document the host loads. The
-mapping is deliberately boring:
+`cog build` turns agent declarations into a document the host loads. Nothing
+from Cog is alive at the other end: the output is data, and once it is loaded
+the system runs with no Cog anywhere in it.
+
+```
+cog build systems/tickets.cog --ids ids.json --out tickets.json
+```
+
+The mapping is deliberately boring:
 
 | Cog | becomes |
 |---|---|
@@ -523,16 +570,38 @@ mapping is deliberately boring:
 | `when` inside an agent verb | a `branch` action |
 | `on` | a trigger |
 | `every` | a schedule |
-| `panel` | components plus the statement that posts them |
-| `@channel("x")` | a name to resolve at run time |
+| `panel` | a component per button, plus the action that posts them |
+| a verb parameter | an argument slot the button fills |
+| `@user.mention` and friends | a host placeholder |
+| `@channel("x")` | an id, taken from `--ids` |
 
-Cog values that only exist at build time — a `hold` used to compute a channel
-name — are folded during lowering. Anything that needs the host's live state
-stays as an entity reference.
+### 13.1 Names and ids
 
-**What cannot be lowered is a compile error.** A `repeat` loop inside an agent
-verb has no equivalent in a document of actions, and saying so at build time is
-better than half-lowering it.
+A stored row cannot look a name up, so every `@channel("x")`, `@category("x")`
+and `@role("x")` needs an id. They come from a JSON file:
+
+```json
+{
+  "guild": "1535979812860993617",
+  "category:Tickets": "…",
+  "role:Operator": "…",
+  "channel:ticket-log": "…"
+}
+```
+
+A build with a name it cannot resolve fails, and lists every unresolved name at
+once rather than one per attempt. `cog check` does not require the file, because
+a missing id is a fact about the server rather than about the source.
+
+### 13.2 What cannot cross
+
+**What cannot be lowered is a compile error.** A row holds fixed values in a
+fixed shape, so `hold`, `carry`, `each`, `repeat`, `attempt` and `give` have no
+equivalent inside an agent verb, and neither does arithmetic on anything the
+build cannot already see. Joining text with `+` is folded and survives.
+
+Saying so at build time is the whole reason the compiler exists. The alternative
+is a row that stores cleanly and fails under someone's finger.
 
 ---
 

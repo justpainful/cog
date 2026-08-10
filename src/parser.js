@@ -342,9 +342,42 @@ export function parse(source, file = '<input>') {
     return node('ExpressionStatement', tk, { expression: target });
   };
 
+  /**
+   * A `when` inside an agent verb asks the host a question, and host questions
+   * are predicates: `@user has @role("Operator")`, `no @channel("x")`. Neither
+   * parses as an expression, so the test is scanned first and read as a
+   * predicate when it looks like one.
+   *
+   * The scan runs to the opening brace at bracket depth zero, and `has` only
+   * counts when it sits between two entities. `out.has(x)` is a list asking
+   * itself a question and has nothing to do with roles.
+   */
+  const testIsPredicate = () => {
+    if (atKeyword('no') && peek(1).type === T.ENTITY) return true;
+    let depth = 0;
+    for (let i = 0; ; i++) {
+      const tk = peek(i);
+      if (tk.type === T.EOF) return false;
+      if (tk.type === T.PUNCT) {
+        if ('(['.includes(tk.value)) depth++;
+        else if (')]'.includes(tk.value)) depth--;
+        else if (tk.value === '{' && depth === 0) return false;
+      }
+      if (
+        depth === 0 &&
+        (tk.type === T.KEYWORD || tk.type === T.IDENT) &&
+        tk.value === 'has' &&
+        peek(i + 1).type === T.ENTITY &&
+        !(i > 0 && peek(i - 1).type === T.PUNCT && peek(i - 1).value === '.')
+      ) {
+        return true;
+      }
+    }
+  };
+
   const whenStmt = () => {
     const tk = advance();
-    const test = expression();
+    const test = testIsPredicate() ? predicate() : expression();
     const body = block();
     let alternate = null;
     if (atKeyword('otherwise')) {

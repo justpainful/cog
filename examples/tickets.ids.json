@@ -1,0 +1,8 @@
+{
+  "guild": "1535979812860993617",
+  "category:Tickets": "100000000000000001",
+  "role:Operator": "100000000000000002",
+  "channel:ticket-log": "100000000000000003",
+  "channel:welcome": "100000000000000004",
+  "channel:command-log": "100000000000000005"
+}

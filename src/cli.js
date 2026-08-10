@@ -2,19 +2,22 @@
 // The cog command.
 //
 //   cog run <file>      execute the program
+//   cog build <file>    lower the agent layer onto a host runtime
 //   cog check <file>    parse and report problems, change nothing
 //   cog tokens <file>   dump the token stream, for debugging the lexer
 //   cog ast <file>      dump the syntax tree
 //
-// `cog build` lowers agent declarations onto a host runtime and is not written
-// yet; asking for it says so rather than doing something surprising.
+// run and build are two backends over one front end. run executes the program;
+// build emits a document of rows that a host loads and then serves on its own,
+// with no Cog anywhere in the picture.
 
-import { readFileSync, existsSync } from 'node:fs';
+import { readFileSync, writeFileSync, existsSync } from 'node:fs';
 import { resolve, dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { parse } from './parser.js';
 import { tokenize } from './lexer.js';
 import { Interpreter, useParser } from './interpret.js';
+import { lower } from './lower.js';
 import { CogError } from './errors.js';
 
 useParser(parse);
@@ -27,9 +30,15 @@ const [, , command, ...rest] = process.argv;
 const USAGE = `cog — an agent-oriented language
 
   cog run <file>      execute a program
+  cog build <file>    lower the agent layer onto a host runtime
   cog check <file>    parse and report problems, changing nothing
   cog tokens <file>   print the token stream
   cog ast <file>      print the syntax tree
+
+build options
+  --ids <file.json>   names to ids, keyed "channel:welcome", "role:Operator"
+  --out <file.json>   write the document here instead of to the screen
+  --stamp             record the build time in the document
 `;
 
 if (!command || command === 'help' || command === '--help' || command === '-h') {
@@ -37,13 +46,17 @@ if (!command || command === 'help' || command === '--help' || command === '-h') 
   process.exit(command ? 0 : 1);
 }
 
-if (command === 'build') {
-  console.error('cog build is not written yet.');
-  console.error('It will lower agent declarations onto a host runtime; for now, cog check validates them.');
-  process.exit(2);
-}
+// Only these take a value. Knowing which ones do is what keeps
+// `cog build --stamp thing.cog` from reading the file name as the flag's value.
+const VALUED = new Set(['--ids', '--out']);
 
-const files = rest.filter((a) => !a.startsWith('-'));
+const option = (name) => {
+  const at = rest.indexOf(`--${name}`);
+  if (at === -1) return null;
+  return VALUED.has(`--${name}`) ? rest[at + 1] ?? null : true;
+};
+
+const files = rest.filter((a, i) => !a.startsWith('-') && !(i > 0 && VALUED.has(rest[i - 1])));
 if (!files.length) {
   console.error(`${command} needs a file.\n`);
   process.stdout.write(USAGE);
@@ -88,7 +101,65 @@ for (const name of files) {
       const counts = {};
       for (const node of ast.body) counts[node.kind] = (counts[node.kind] ?? 0) + 1;
       const summary = Object.entries(counts).map(([k, n]) => `${n} ${k}`).join(', ');
-      console.log(`${name}: ok — ${summary || 'empty'}`);
+
+      // Anything in the agent layer is lowered as well, because that is where
+      // the checking worth having happens: a permission that is not real or a
+      // filter an event never supplies is caught here rather than under a
+      // finger. Ids are not required, since a missing one is a fact about the
+      // server and not about the file.
+      const agentLayer = ast.body.some((n) => ['Intent', 'On', 'Every'].includes(n.kind));
+      let note = '';
+      if (agentLayer) {
+        const document = lower(ast, { file: name, source, requireIds: false });
+        const rows = document.actions.length + document.triggers.length + document.schedules.length;
+        note = `, ${rows} row${rows === 1 ? '' : 's'}`;
+        if (document.needs_ids) note += `, ${document.needs_ids.length} name(s) still need ids`;
+      }
+      console.log(`${name}: ok — ${summary || 'empty'}${note}`);
+      continue;
+    }
+
+    if (command === 'build') {
+      const idsPath = option('ids');
+      let ids = {};
+      if (typeof idsPath === 'string') {
+        const at = resolve(idsPath);
+        if (!existsSync(at)) {
+          console.error(`no ids file at ${at}`);
+          failures++;
+          continue;
+        }
+        ids = JSON.parse(readFileSync(at, 'utf8'));
+      }
+
+      const document = lower(ast, { file: name, source, ids });
+      if (option('stamp')) document.exported_at = new Date().toISOString();
+
+      const counts = [
+        [document.actions.length, 'action'],
+        [document.triggers.length, 'trigger'],
+        [document.schedules.length, 'schedule'],
+        [document.components.length, 'component'],
+        [document.counters.length, 'counter'],
+      ]
+        .filter(([n]) => n)
+        .map(([n, word]) => `${n} ${word}${n === 1 ? '' : 's'}`)
+        .join(', ');
+
+      if (!counts) {
+        console.error(`${name}: nothing to build — this file declares no verb, on or every`);
+        failures++;
+        continue;
+      }
+
+      const out = option('out');
+      const text = `${JSON.stringify(document, null, 2)}\n`;
+      if (typeof out === 'string') {
+        writeFileSync(resolve(out), text);
+        console.log(`${name}: ${counts} → ${out}`);
+      } else {
+        process.stdout.write(text);
+      }
       continue;
     }
 

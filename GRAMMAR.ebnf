@@ -72,7 +72,10 @@ carryStmt      = "carry" , identifier , "=" , expression ;
 assignStmt     = target , "=" , expression ;
 target         = identifier , { "." , identifier | "[" , expression , "]" } ;
 
-whenStmt       = "when" , expression , block ,
+(* The test is a predicate when it opens with "no" followed by an entity, or
+   when "has" sits between two entities at bracket depth zero. Otherwise it is
+   an expression, which keeps out.has(x) meaning what it looks like. *)
+whenStmt       = "when" , ( predicate | expression ) , block ,
                  [ "otherwise" , ( whenStmt | block ) ] ;
 
 eachStmt       = "each" , identifier , [ "," , identifier ] , "of" , expression , block ;

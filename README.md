@@ -76,6 +76,21 @@ The first makes Cog a real language you can write ordinary programs in. The
 second is what makes it worth having: agent declarations become configuration a
 running system can load, validated against that system's actual capabilities.
 
+```
+cog build examples/tickets.cog --ids ids.json --out tickets.json
+examples/tickets.cog: 4 actions, 1 trigger, 1 schedule, 1 component, 1 counter
+```
+
+Nothing from Cog is alive at the other end. The output is data: once the host
+has loaded it, the buttons work because the rows exist, and Cog is not running
+anywhere. A verb inside an `intent` becomes one of those rows; a verb at the top
+level of a file stays an ordinary function that `cog build` walks past.
+
+What a row cannot hold is a compile error rather than a surprise later. A loop
+in an agent verb, a permission name the host has never heard of, a filter the
+event does not supply, an interval cron cannot express — each is refused with
+the reason, which is the whole argument for compiling this at all.
+
 ## The vocabulary
 
 Nothing that declares, binds or controls flow is borrowed — no `var`, `let`,
