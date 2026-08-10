@@ -52,6 +52,15 @@ const LIST_METHODS = {
   join: (xs, [sep = ', ']) => xs.map((x) => show(x)).join(sep),
   slice: (xs, [from, to]) => xs.slice(from, to === undefined ? undefined : to),
   plus: (xs, [v]) => [...xs, v],
+  // `add` changes the list and gives it back; `plus` leaves it alone and gives
+  // a new one. Building a list an item at a time with `plus` copies the whole
+  // thing on every pass, so a loop over n items does n² of work — unnoticeable
+  // at ten, ruinous at ten thousand. An index assignment already changes a list
+  // in place, so this introduces no new kind of surprise.
+  add: (xs, [v]) => {
+    xs.push(v);
+    return xs;
+  },
   without: (xs, [v]) => xs.filter((x) => !equal(x, v)),
   at: (xs, [i]) => (i >= 0 && i < xs.length ? xs[i] : NONE),
 };

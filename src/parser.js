@@ -673,6 +673,9 @@ export function parse(source, file = '<input>') {
 
   const askStmt = () => {
     const tk = advance();
+    // An optional title, because the box a person types into should be able to
+    // say what it is for.
+    const title = at(T.TEXT) ? node('Text', peek(), { parts: textParts(advance()) }) : null;
     expectPunct('{');
     const fields = [];
     while (!atPunct('}')) {
@@ -693,7 +696,7 @@ export function parse(source, file = '<input>') {
     expectPunct('}');
     expectKeyword('then', 'an ask hands off to a verb: ask { … } then tickets.open');
     const verb = path('a verb name');
-    return node('Ask', tk, { fields, verb });
+    return node('Ask', tk, { title, fields, verb });
   };
 
   // -------------------------------------------------------------- predicates

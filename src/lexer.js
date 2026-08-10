@@ -79,17 +79,25 @@ export function tokenize(source, file = '<input>') {
     const startLine = line;
     const startCol = column();
 
-    // clock time, before number, because 00:03 must not lex as 0 then 0 : 3
-    if (isDigit(ch) && isDigit(at(1)) && at(2) === ':' && isDigit(at(3)) && isDigit(at(4))) {
-      const value = source.slice(i, i + 5);
-      const hours = Number(value.slice(0, 2));
-      const minutes = Number(value.slice(3, 5));
-      if (hours > 23 || minutes > 59) {
-        fail(`"${value}" is not a clock time`, 'hours are 00-23 and minutes are 00-59', 5);
+    // clock time, before number, because 00:03 must not lex as 0 then 0 : 3.
+    // One or two digits for the hour, since 9:00 is how people write nine and
+    // requiring the zero taught nothing.
+    if (isDigit(ch)) {
+      const wide = isDigit(at(1)) && at(2) === ':' && isDigit(at(3)) && isDigit(at(4));
+      const narrow = at(1) === ':' && isDigit(at(2)) && isDigit(at(3)) && !isDigit(at(4));
+      if (wide || narrow) {
+        const width = wide ? 5 : 4;
+        const value = source.slice(i, i + width);
+        const [hourText, minuteText] = value.split(':');
+        const hours = Number(hourText);
+        const minutes = Number(minuteText);
+        if (hours > 23 || minutes > 59) {
+          fail(`"${value}" is not a clock time`, 'hours are 0-23 and minutes are 00-59', width);
+        }
+        i += width;
+        push(T.CLOCK, { hours, minutes }, startLine, startCol);
+        continue;
       }
-      i += 5;
-      push(T.CLOCK, { hours, minutes }, startLine, startCol);
-      continue;
     }
 
     // number, and duration when a unit letter follows immediately
@@ -100,6 +108,18 @@ export function tokenize(source, file = '<input>') {
         raw += source[i++];
         while (i < source.length && (isDigit(source[i]) || source[i] === '_')) raw += source[i++];
       }
+      // An exponent, so a number too large or small to write out can still be
+      // written. `1e6` only counts when a digit follows the e, which keeps
+      // `5e` as the error it is rather than a silent 5.
+      if (
+        (source[i] === 'e' || source[i] === 'E') &&
+        (isDigit(at(1)) || ((at(1) === '+' || at(1) === '-') && isDigit(at(2))))
+      ) {
+        raw += source[i++];
+        if (source[i] === '+' || source[i] === '-') raw += source[i++];
+        while (i < source.length && (isDigit(source[i]) || source[i] === '_')) raw += source[i++];
+      }
+
       const value = Number(raw.replace(/_/g, ''));
 
       // A unit only counts when the next character cannot continue an
@@ -162,8 +182,11 @@ export function tokenize(source, file = '<input>') {
 
         if (source[i] === '\\') {
           const esc = at(1);
-          const map = { n: '\n', t: '\t', '"': '"', '\\': '\\', '@': '@' };
-          if (!(esc in map)) fail(`\\${esc ?? ''} is not an escape`, 'the escapes are \\n \\t \\" \\\\ \\@', 2);
+          // \r earns its place because a file written on Windows ends its lines
+          // with one, and text that cannot name a carriage return cannot say
+          // what it is trimming.
+          const map = { n: '\n', r: '\r', t: '\t', '"': '"', '\\': '\\', '@': '@' };
+          if (!(esc in map)) fail(`\\${esc ?? ''} is not an escape`, 'the escapes are \\n \\r \\t \\" \\\\ \\@', 2);
           literal += map[esc];
           i += 2;
           continue;

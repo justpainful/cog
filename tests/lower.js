@@ -324,6 +324,41 @@ refuses('a button pointing nowhere',
   'verb greet { panel at @here { button "X" -> missing } }',
   'there is no verb called');
 
+// --------------------------------------------------------------------- ask
+
+describe('ask opens a box and hands the answers on');
+
+const asked = build(`intent t {
+  verb start {
+    ask "Open a ticket" {
+      line "Subject" required
+      paragraph "What happened"
+    } then open
+  }
+  verb open { post @channel("log") "@field.subject" }
+}`);
+
+check('an ask becomes a modal', asked.actions[0].kind === 'modal_open');
+check('the title is carried', asked.actions[0].params.title === 'Open a ticket');
+check('a line is a short field', asked.actions[0].params.fields[0].style === 'short');
+check('required is carried', asked.actions[0].params.fields[0].required === true);
+check('a paragraph is a long field', asked.actions[0].params.fields[1].style === 'paragraph');
+check('a label becomes the name the answer arrives under',
+  asked.actions[0].params.fields[1].key === 'what_happened');
+check('the ask names what runs next', asked.actions[0].params.on_submit === 't.open');
+check('the answer is readable by name',
+  asked.actions[1].params.content === '{{field.subject}}');
+
+refuses('two fields that read the same',
+  'verb greet { ask { line "A b" \n line "a-b" } then greet }',
+  'both read as');
+refuses('more fields than the host allows',
+  'verb greet { ask { line "a" \n line "b" \n line "c" \n line "d" \n line "e" \n line "f" } then greet }',
+  '5 fields in one ask');
+refuses('an ask with nobody in front of it',
+  'on member.joins { ask { line "a" } then helper }',
+  'nothing here was pressed');
+
 // ------------------------------------------------------------------ naming
 
 describe('names and ids');

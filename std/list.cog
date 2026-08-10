@@ -52,7 +52,7 @@ share verb max(xs) {
 share verb unique(xs) {
   carry out = []
   each x of xs {
-    when not out.has(x) { out = out + [x] }
+    when not out.has(x) { out.add(x) }
   }
   give out
 }
@@ -64,7 +64,7 @@ share verb flatten(xs) {
     when kind(x) is "list" {
       out = out + x
     } otherwise {
-      out = out + [x]
+      out.add(x)
     }
   }
   give out
@@ -75,7 +75,7 @@ share verb zip(xs, ys) {
   hold count = when xs.size < ys.size { xs.size } otherwise { ys.size }
   carry out = []
   each i of range(0, count) {
-    out = out + [[xs[i], ys[i]]]
+    out.add([xs[i], ys[i]])
   }
   give out
 }
@@ -87,13 +87,13 @@ share verb chunk(xs, n) {
   carry out = []
   carry current = []
   each x of xs {
-    current = current + [x]
+    current.add(x)
     when current.size is n {
-      out = out + [current]
+      out.add(current)
       current = []
     }
   }
-  when current.size > 0 { out = out + [current] }
+  when current.size > 0 { out.add(current) }
   give out
 }
 
@@ -137,7 +137,7 @@ share verb group_by(xs, key) {
   each x of xs {
     hold k = key(x)
     when out.has(k) {
-      out[k] = out[k] + [x]
+      out[k].add(x)
     } otherwise {
       out[k] = [x]
     }
@@ -155,22 +155,22 @@ verb merge(left, right, key) {
   carry j = 0
   repeat until i >= left.size and j >= right.size {
     when j >= right.size {
-      out = out + [left[i]]
+      out.add(left[i])
       i = i + 1
       next
     }
     when i >= left.size {
-      out = out + [right[j]]
+      out.add(right[j])
       j = j + 1
       next
     }
     -- Only strictly smaller keys jump the queue, which is what makes this
     -- stable.
     when before(key(right[j]), key(left[i])) {
-      out = out + [right[j]]
+      out.add(right[j])
       j = j + 1
     } otherwise {
-      out = out + [left[i]]
+      out.add(left[i])
       i = i + 1
     }
   }

@@ -107,6 +107,17 @@ export const COGNITION = {
     now: { bare: '{{now}}' },
     count: { bare: '{{counter.value}}' },
     owner: { bare: null }, // only meaningful inside a predicate
+    // What someone typed into an ask. The field names are whatever that ask
+    // called them, so this entity is open rather than a fixed list.
+    field: { bare: null, open: '{{field.NAME}}' },
+  },
+
+  // ---- what an ask becomes ------------------------------------------------
+  ask: {
+    kind: 'modal_open',
+    // Discord allows five inputs in one box and no more.
+    maxFields: 5,
+    shapes: { line: 'short', paragraph: 'paragraph' },
   },
 
   // Entities that name something and need an id resolved before the host can

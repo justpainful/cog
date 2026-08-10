@@ -5,8 +5,8 @@
 -- repeats those; everything here is built out of them.
 
 -- Whitespace is whatever `trimmed` removes, which keeps this agreeing with the
--- native method instead of carrying a private list of space characters. It also
--- catches the ones Cog cannot write as an escape, such as a carriage return.
+-- native method instead of carrying a private list of space characters. That
+-- covers the ones no escape names, such as a non-breaking space.
 verb is_space(c) {
   give c.trimmed.size is 0
 }
@@ -20,12 +20,10 @@ verb is_separator(c) {
 }
 
 -- A trailing carriage return, which `split("\n")` leaves on every line of a
--- file written on Windows. Cog has no `\r` escape, so the test is "whitespace
--- that is neither a space nor a tab".
+-- file written on Windows.
 verb without_return(piece) {
   when piece.size is 0 { give piece }
-  hold last = piece[piece.size - 1]
-  when is_space(last) and last isnt " " and last isnt "\t" {
+  when piece[piece.size - 1] is "\r" {
     give piece.slice(0, piece.size - 1)
   }
   give piece

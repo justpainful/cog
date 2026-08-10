@@ -87,14 +87,16 @@ a call, or after `->`.
 ### 2.3 Numbers
 
 ```cog
-42        3.5        1_000_000        0.001
+42        3.5        1_000_000        0.001        1e6        1.5e-3
 ```
 
-`_` is a visual separator and is ignored. There is one numeric type.
+`_` is a visual separator and is ignored. There is one numeric type. An exponent
+counts only when digits follow the `e`, so `5e` is a number and a name rather
+than half a literal.
 
 ### 2.4 Text
 
-Double quotes. Escapes: `\n`, `\t`, `\"`, `\\`, `\@`.
+Double quotes. Escapes: `\n`, `\r`, `\t`, `\"`, `\\`, `\@`.
 
 ```cog
 "plain"
@@ -121,8 +123,11 @@ string. A visible mistake beats a silent one.
 
 ```cog
 30s   5m   2h   3d   1w         -- duration, in seconds
-00:03   14:30                   -- clock time, seconds since midnight
+00:03   14:30   9:30            -- clock time, seconds since midnight
 ```
+
+The hour may be one digit or two, because nine o'clock is written `9:00` and
+insisting on the zero taught nobody anything. The minutes are always two.
 
 Both are counts of seconds, so a clock and a duration can be compared and added
 without a conversion. They did not start that way: a clock counted minutes while
@@ -161,6 +166,21 @@ Mixing the two forms in one literal is an error.
 
 Text, numbers, truth values and `none` are compared by value; lists, maps,
 records and verbs by identity.
+
+Text is immutable. A list is not: `items[0] = x` changes it in place, and so
+does `items.add(x)`. That matters when a list is built an item at a time.
+`plus` leaves the list alone and gives back a new one, which copies everything
+on every pass and turns a loop over n items into n² of work. `add` changes the
+list and gives it back:
+
+```cog
+carry out = []
+each x of xs { out.add(x) }        -- cheap
+each x of xs { out = out + [x] }   -- the same answer, quadratically slower
+```
+
+At ten items the difference is invisible. At twenty thousand it is ten times the
+running time, and it keeps growing.
 
 ---
 
@@ -447,7 +467,34 @@ the person who triggered it is told.
 | `react "👀"` | react to the message in context |
 | `count name up by 1` | bump a persistent counter |
 | `panel at @channel(x) { button "Label" style -> verb(args) }` | post controls |
-| `ask { line "reason" } then verb` | open a form, then run a verb |
+| `ask "Title" { line "reason" } then verb` | open a form, then run a verb |
+
+### 11.3b ask
+
+A box someone types into, and the verb that reads what they typed.
+
+```cog
+verb start {
+  ask "Open a ticket" {
+    line "Subject" required
+    paragraph "What happened"
+  } then open
+}
+
+verb open {
+  post @channel("ticket-log") "@field.subject — @field.what_happened"
+  say "thanks"
+}
+```
+
+`line` is one line and `paragraph` is several. The title is optional. Each
+answer arrives under its label, lowercased with the spaces turned to
+underscores, and is read as `@field.<name>` in the verb that follows. Two labels
+that slug to the same name is an error, since one answer would silently replace
+the other.
+
+A host limits how many fields fit in one box, and Cog refuses at build time
+rather than dropping the extras.
 
 ### 11.4 then and @made
 
@@ -663,15 +710,28 @@ than quietly left for someone to trip over.
 
 - **`[14:30]` is ambiguous.** A clock time is one lexical token, so a map keyed
   `14` with the value `30` cannot be written without a space: `[14 : 30]`. The
-  lexer resolves it as a time. Acceptable, and worth knowing.
+  lexer resolves it as a time. Now that a one-digit hour is allowed, this
+  reaches `[9:30]` as well. Acceptable, and worth knowing.
 - **`x --1` is a comment.** Line comments start with `--` and unary minus
   exists, so `x - -1` needs the space. Unavoidable given both features.
-- **`no` carries two meanings** — the boolean, and absence in
+- **`no` carries two meanings**: the boolean, and absence in
   `needs no @channel(x)`. Position separates them, but a reader has to know.
+- **`has` carries two meanings.** `out.has(x)` asks a list a question;
+  `@user has @role(x)` asks the host one. A `when` decides which it is reading
+  by what surrounds the word, described in §6.1. Both readings are useful and
+  neither name was worth giving up.
+- **A verb parameter cannot be called `verb`.** It is reserved everywhere, so
+  the higher-order methods in `std/list` name theirs `f` or `key` instead. The
+  documentation reads slightly worse for it, and reserving the word is still
+  right.
 - **Permission names and colours are not defined here.** `read`, `write`,
   `history` and `blue` appear in section 11 examples and come from the host's
   capability table, the same place event names come from. This document should
   say so where it introduces them, and currently does not.
+
+Closed since this list was written: text can name a carriage return with `\r`,
+numbers can carry an exponent, a clock hour may be one digit, `ask` lowers onto
+a host, and a list can be built in linear time with `add`.
 
 ## 15. Not in 0.1
 

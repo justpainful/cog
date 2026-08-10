@@ -126,6 +126,9 @@ export function lower(
       return fail(`"@${head}" is not something this host provides`, node,
         `it provides ${Object.keys(host.entities).join(', ')}`);
     }
+    // An open entity names things the source decides, such as the fields of an
+    // ask, so any name is allowed and the ask itself is what has to agree.
+    if (entity.open && rest.length) return entity.open.replace('NAME', rest.join('.'));
     if (!rest.length) {
       if (!entity.bare) return fail(`"@${head}" only means something inside a needs or a when`, node);
       return entity.bare;
@@ -419,9 +422,35 @@ export function lower(
         return fail(`${node.kind.toLowerCase()} has no equivalent in a stored row`, node,
           'an agent verb becomes a fixed tree of actions; bindings and loops exist only while cog run is running');
 
-      case 'Ask':
-        return fail('ask cannot be lowered yet', node,
-          'the host can open a modal, but Cog has no way yet to say what happens to the answers');
+      case 'Ask': {
+        if (!ctx.interactive) {
+          return fail('ask opens a box in front of whoever pressed something, and nothing here was pressed', node);
+        }
+        if (node.fields.length > host.ask.maxFields) {
+          return fail(`this host takes ${host.ask.maxFields} fields in one ask, and this has ${node.fields.length}`, node,
+            'split it into two asks, or drop a field');
+        }
+        const keys = new Set();
+        const fields = node.fields.map((f) => {
+          const label = f.label.map((p) => (p.kind === 'literal' ? p.value : '')).join('');
+          if (!label) fail('an ask field needs a label that is plain text', f);
+          // The name the answer arrives under is the label, slugged. It has to
+          // be stable, because the verb on the other side reads @field.<name>.
+          const key = label.toLowerCase().replace(/[^a-z0-9]+/g, '_').replace(/^_|_$/g, '');
+          if (!key) fail(`"${label}" leaves nothing to name the answer`, f, 'give the field a label with letters in it');
+          if (keys.has(key)) fail(`two fields here are both read as @field.${key}`, f, 'give them different labels');
+          keys.add(key);
+          return { key, label, style: host.ask.shapes[f.shape], required: f.required };
+        });
+        return {
+          kind: host.ask.kind,
+          params: {
+            title: node.title ? text(node.title, ctx) : 'Input',
+            fields,
+            on_submit: verbKey(node.verb, ctx.prefix, node),
+          },
+        };
+      }
 
       default:
         return fail(`a ${node.kind} cannot be lowered`, node);

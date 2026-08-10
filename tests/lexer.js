@@ -64,6 +64,12 @@ t('separators are ignored', values('1_000_000')[0] === 1000000);
 t('leading zero decimal', values('0.001')[0] === 0.001);
 // A trailing dot is a field access on a number, not part of the literal.
 t('trailing dot is not consumed', kinds('42.').join(',') === 'number,punct');
+t('exponent', values('1e6')[0] === 1000000);
+t('capital exponent', values('2E3')[0] === 2000);
+t('negative exponent', values('1.5e-3')[0] === 0.0015);
+t('positive exponent', values('1e+3')[0] === 1000);
+// An e with no digits behind it is an identifier, not half a number.
+t('5e is a number then a name', kinds('5e').join(',') === 'number,ident');
 
 describe('durations');
 t('seconds', lex('30s')[0].value.seconds === 30);
@@ -81,6 +87,10 @@ t('afternoon', JSON.stringify(lex('14:30')[0].value) === '{"hours":14,"minutes":
 throws('rejects hour 24', '24:00', 'not a clock time');
 throws('rejects minute 60', '12:60', 'not a clock time');
 t('a bare number and colon still lex', kinds('1:2').join(',') === 'number,punct,number');
+// Nine o'clock is written the way people write it.
+t('one-digit hour', JSON.stringify(lex('9:30')[0].value) === '{"hours":9,"minutes":30}');
+t('one-digit midnight hour', JSON.stringify(lex('0:05')[0].value) === '{"hours":0,"minutes":5}');
+throws('rejects a one-digit hour past 23', '9:61', 'not a clock time');
 
 describe('identifiers and keywords');
 t('identifier', kinds('total')[0] === T.IDENT);
@@ -112,6 +122,9 @@ t('escape newline', lex('"a\\nb"')[0].value[0].value === 'a\nb');
 t('escape quote', lex('"a\\"b"')[0].value[0].value === 'a"b');
 t('escape backslash', lex('"a\\\\b"')[0].value[0].value === 'a\\b');
 t('escape at-sign', lex('"a\\@b"')[0].value[0].value === 'a@b');
+// A file written on Windows ends its lines with one, so text has to be able to
+// name it.
+t('escape carriage return', lex('"a\\rb"')[0].value[0].value === 'a\rb');
 throws('unknown escape', '"a\\qb"', 'is not an escape');
 throws('unterminated text', '"abc', 'never closed');
 throws('newline inside plain text', '"a\nb"', 'never closed');

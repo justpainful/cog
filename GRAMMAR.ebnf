@@ -151,7 +151,7 @@ buttonLine     = "button" , text , [ buttonStyle ] , "->" , path ,
                  [ "(" , [ arguments ] , ")" ] ;
 buttonStyle    = "primary" | "secondary" | "success" | "danger" ;
 
-askStmt        = "ask" , "{" , { askField } , "}" , "then" , path ;
+askStmt        = "ask" , [ text ] , "{" , { askField } , "}" , "then" , path ;
 askField       = ( "line" | "paragraph" ) , text , [ "required" ] ;
 
 (* ------------------------------------------------------------ expressions *)
@@ -204,14 +204,15 @@ identifier     = letter , { letter | digit | "_" } ;
 letter         = ? any Unicode letter ? | "_" ;
 digit          = "0".."9" ;
 
-number         = digit , { digit | "_" } , [ "." , digit , { digit | "_" } ] ;
+number         = digit , { digit | "_" } , [ "." , digit , { digit | "_" } ] ,
+                 [ ( "e" | "E" ) , [ "+" | "-" ] , digit , { digit | "_" } ] ;
 duration       = number , ( "s" | "m" | "h" | "d" | "w" ) ;
-clock          = digit , digit , ":" , digit , digit ;
+clock          = digit , [ digit ] , ":" , digit , digit ;
 
 text           = '"' , { textChar | interpolation } , '"'
                | '"""' , { ? any character ? } , '"""' ;
 textChar       = ? any character except '"' '\' '@' ? | escape ;
-escape         = "\" , ( "n" | "t" | '"' | "\" | "@" ) ;
+escape         = "\" , ( "n" | "r" | "t" | '"' | "\" | "@" ) ;
 interpolation  = "@" , ( path | "(" , expression , ")" ) ;
 
 comment        = "--" , { ? any character except newline ? } ;
