@@ -1,0 +1,34 @@
+# The Cog engine.
+#
+# There are no dependencies and there will not be any. A language whose
+# implementation pulls in forty crates is a language you cannot read, cannot
+# audit, and cannot build on a machine that is offline. Everything below is
+# written here: the lexer, the parser, the compiler, the virtual machine, the
+# collector, and the networking the host layer needs.
+#
+# The one thing not written here is TLS, which is asked of the operating system
+# through its own interface. Writing TLS by hand would not be from scratch, it
+# would be negligent.
+
+[package]
+name = "cog"
+version = "0.1.0"
+edition = "2021"
+rust-version = "1.75"
+description = "Cog — an agent-oriented programming language"
+license = "MIT"
+authors = ["Faisal Saud"]
+
+[[bin]]
+name = "cog"
+path = "src/main.rs"
+
+[dependencies]
+# Deliberately empty. See the note above.
+
+[profile.release]
+opt-level = 3
+lto = true
+codegen-units = 1
+panic = "abort"
+strip = true

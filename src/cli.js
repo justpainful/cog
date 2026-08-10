@@ -146,6 +146,8 @@ for (const name of files) {
         file: name,
         source,
         load: makeLoader(file),
+        // Only `run` may reach outside the program.
+        effects: true,
       });
       interpreter.run(ast);
       continue;

@@ -16,6 +16,7 @@ import {
   truthy, kindOf, show, equal,
 } from './values.js';
 import { installBuiltins, callMethod, hasMethod } from './builtins.js';
+import { isNative, nativeModule } from './native/index.js';
 
 // Marks a Map as a module, so a missing name can name the module it is
 // missing from. A plain map's missing key stays `none`.
@@ -75,9 +76,19 @@ export class Interpreter {
    * @param options.output  where `note` writes; defaults to stdout
    * @param options.load    resolves a `bring` path to source text
    */
-  constructor({ output = (line) => console.log(line), load = null, file = '<input>', source = '' } = {}) {
+  constructor({
+    output = (line) => console.log(line),
+    load = null,
+    file = '<input>',
+    source = '',
+    // Whether this run may reach outside itself. `cog run` says yes; `cog
+    // check` and `cog build` say no, because a check that could send a message
+    // is not a check.
+    effects = false,
+  } = {}) {
     this.output = output;
     this.load = load;
+    this.effects = effects;
     this.file = file;
     this.source = source;
     this.globals = new Scope();
@@ -323,6 +334,29 @@ export class Interpreter {
   }
 
   bring(node, scope) {
+    if (this.modules.has(node.path)) {
+      scope.declare(node.name, this.modules.get(node.path), { fixed: true });
+      return;
+    }
+
+    // A native module is not a file. It is the host itself, and bringing one is
+    // how a Cog program stops being a description and starts being a thing that
+    // acts. Nothing else about `bring` changes: what comes back is an ordinary
+    // module you read fields off and call verbs on.
+    if (isNative(node.path)) {
+      if (!this.effects) {
+        throw this.fail(
+          `"${node.path}" reaches outside this program, and this run is not allowed to`,
+          node,
+          'cog run allows it; cog check and cog build do not, because neither should have effects',
+        );
+      }
+      const module = nativeModule(node.path, MODULE);
+      this.modules.set(node.path, module);
+      scope.declare(node.name, module, { fixed: true });
+      return;
+    }
+
     if (!this.load) {
       throw this.fail(`cannot bring "${node.path}" — this interpreter has no module loader`, node);
     }
@@ -344,7 +378,7 @@ export class Interpreter {
     try {
       // A module gets its own interpreter so its file and source appear in its
       // own errors rather than the importer's.
-      const child = new Interpreter({ output: this.output, load: this.load, file: node.path, source });
+      const child = new Interpreter({ output: this.output, load: this.load, file: node.path, source, effects: this.effects });
       child.modules = this.modules;
       child.loading = this.loading;
 

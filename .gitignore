@@ -8,3 +8,6 @@ desktop.ini
 # scratch files while developing a module
 scratch_*.cog
 _*.cog
+
+# the engine's build output
+engine/target/

@@ -698,18 +698,18 @@ All 84 words together, generated from GRAMMAR.ebnf and checked by
 `tests/keywords.js`:
 
 ```
-and        ask        at         attempt    body       bring      button
-by         carry      category   channel    colour     contains   count
-danger     day        each       embed      every      everyone   fail
-footer     friday     from       give       grant      has        hide
-hold       intent     is         isnt       line       make       monday
-month      needs      next       no         none       not        note
-of         on         or         otherwise  panel      paragraph  post
-prefix     primary    react      rename     repeat     required   rescue
-revoke     role       saturday   say        secondary  shape      share
-show       starts     stop       success    suffix     sunday     tell
-then       thread     thursday   times      title      to         tuesday
-under      until      up         verb       wednesday  when       yes
+and ask at attempt body bring button by
+carry category channel colour command contains count danger
+day each embed every everyone fail footer friday
+from give grant has hide hold intent is
+isnt line make max mentioning monday month named
+needs next no none not note of on
+or otherwise padded panel paragraph post prefix presence
+primary react rename repeat required rescue revoke role
+saturday say secondary shape share show starts stop
+success suffix sunday tell then thread thursday times
+title to topic tuesday under until up verb
+wednesday when yes
 ```
 
 **None of these declares, binds or controls flow using a borrowed word.** The

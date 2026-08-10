@@ -39,7 +39,12 @@ export function tokenize(source, file = '<input>') {
   let line = 1;
   let lineStart = 0;
 
-  const column = () => i - lineStart + 1;
+  // Counted in characters, not in the units JavaScript stores them as. An
+  // emoji is one character to a reader and two to a JavaScript string, and a
+  // caret placed by the second number lands in the wrong column on any line
+  // that has one. Found by writing a second lexer that counts properly and
+  // watching the two disagree.
+  const column = () => [...source.slice(lineStart, i)].length + 1;
   const here = (len = 1) => ({ file, line, column: column(), length: len, source });
   const at = (offset = 0) => source[i + offset];
 
