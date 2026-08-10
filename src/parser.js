@@ -416,9 +416,18 @@ export function parse(source, file = '<input>') {
     // `note + 1` are an ordinary name that happens to be spelled like one.
     if (tk.type === T.IDENT) {
       const after = peek(1);
+
+      // `[` and `(` are the ambiguous pair: `note [1, 2]` is an effect on a
+      // list, and `note[0]` indexes a variable called note. Adjacency decides,
+      // which is the same rule a reader applies without noticing.
+      const adjacent =
+        after.line === tk.line && after.column === tk.column + String(tk.value).length;
+      const opensGroup = after.type === T.PUNCT && (after.value === '[' || after.value === '(');
+
       const continues =
         (after.type === T.OP) ||
-        (after.type === T.PUNCT && ['=', '.', '[', '(', ',', ')', '}', ']', ':'].includes(after.value));
+        (opensGroup && adjacent) ||
+        (after.type === T.PUNCT && ['=', '.', ',', ')', '}', ']', ':'].includes(after.value));
       if (continues) return null;
     }
 

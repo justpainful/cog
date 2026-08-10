@@ -1,0 +1,43 @@
+-- A tour of Cog's core. Run it with: cog run examples/tour.cog
+
+hold greeting = "hello"
+
+verb greet(name, using = greeting) {
+  give using + " " + name
+}
+
+shape Ticket {
+  owner
+  opened = no
+}
+
+verb summarise(tickets) {
+  hold open = tickets.keep(verb (t) { give t.opened })
+  give "@(open.size) of @(tickets.size) open"
+}
+
+note greet("kuroi")
+note greet("cog", "welcome")
+
+hold tickets = [
+  Ticket(owner: "kuroi", opened: yes),
+  Ticket(owner: "axon"),
+  Ticket(owner: "gnos", opened: yes),
+]
+
+note summarise(tickets)
+note tickets.map(verb (t) { give t.owner }).sorted.join(", ")
+
+carry total = 0
+each n of range(1, 11) {
+  when n % 2 is 0 { next }
+  total = total + n
+}
+note "odd numbers below eleven add to @total"
+
+attempt {
+  when total isnt 25 { fail "the arithmetic moved" }
+  note "arithmetic holds"
+} rescue problem {
+  note "problem: @problem.message"
+}
