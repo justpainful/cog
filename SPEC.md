@@ -463,7 +463,7 @@ inside one.
 
 An entity is a handle on something in the host runtime.
 
-```cog
+```
 @user                  the person who triggered this
 @here                  the channel it happened in
 @made                  the thing just created (inside `then` only)
