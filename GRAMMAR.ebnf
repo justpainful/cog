@@ -1,0 +1,219 @@
+(*
+ * Cog 0.1 — grammar
+ *
+ * Notation: ISO-ish EBNF. { x } is zero or more, [ x ] is optional,
+ * | is choice, "x" is a literal token. Lexical rules are at the bottom.
+ *
+ * The parser is recursive descent, so this grammar is written to be
+ * unambiguous with one token of lookahead. Where that needed a deliberate
+ * choice, a comment says which and why.
+ *)
+
+program        = { declaration } , EOF ;
+
+declaration    = bringDecl
+               | shareDecl
+               | shapeDecl
+               | intentDecl
+               | verbDecl
+               | onDecl
+               | everyDecl
+               | statement ;
+
+(* ---------------------------------------------------------------- modules *)
+
+bringDecl      = "bring" , identifier , text ;
+shareDecl      = "share" , ( verbDecl | shapeDecl | holdStmt ) ;
+
+(* ----------------------------------------------------------------- shapes *)
+
+shapeDecl      = "shape" , identifier , "{" , { shapeField } , "}" ;
+shapeField     = identifier , [ "=" , expression ] ;
+
+(* ------------------------------------------------------------------ verbs *)
+
+verbDecl       = "verb" , path , [ "(" , [ params ] , ")" ] , block ;
+params         = param , { "," , param } ;
+param          = identifier , [ "=" , expression ] ;
+path           = identifier , { "." , identifier } ;
+
+(* ------------------------------------------------------------- agent decls *)
+
+intentDecl     = "intent" , identifier , "{" , { verbDecl | onDecl | everyDecl } , "}" ;
+
+onDecl         = "on" , eventName , [ "when" , filter ] , block ;
+eventName      = identifier , "." , identifier ;          (* member.joins *)
+filter         = filterTerm , { "and" , filterTerm } ;
+filterTerm     = "contains" , expression
+               | "starts" , expression
+               | "at" , entity
+               | "from" , entity
+               | "is" , expression ;
+
+everyDecl      = "every" , schedule , block ;
+schedule       = duration                                  (* every 5m *)
+               | "day" , "at" , clock
+               | weekday , "at" , clock
+               | "month" , "at" , clock ;
+weekday        = "monday" | "tuesday" | "wednesday" | "thursday"
+               | "friday" | "saturday" | "sunday" ;
+
+(* ------------------------------------------------------------- statements *)
+
+statement      = holdStmt | carryStmt | assignStmt
+               | whenStmt | eachStmt | repeatStmt
+               | giveStmt | stopStmt | nextStmt
+               | attemptStmt | failStmt
+               | agentStmt
+               | exprStmt ;
+
+holdStmt       = "hold" , identifier , "=" , expression ;
+carryStmt      = "carry" , identifier , "=" , expression ;
+assignStmt     = target , "=" , expression ;
+target         = identifier , { "." , identifier | "[" , expression , "]" } ;
+
+whenStmt       = "when" , expression , block ,
+                 [ "otherwise" , ( whenStmt | block ) ] ;
+
+eachStmt       = "each" , identifier , [ "," , identifier ] , "of" , expression , block ;
+
+repeatStmt     = "repeat" , "until" , expression , block
+               | "repeat" , expression , "times" , block ;
+
+giveStmt       = "give" , [ expression ] ;
+stopStmt       = "stop" ;
+nextStmt       = "next" ;
+
+attemptStmt    = "attempt" , block , "rescue" , identifier , block ;
+failStmt       = "fail" , expression ;
+
+exprStmt       = expression ;
+block          = "{" , { statement | declaration } , "}" ;
+
+(* --------------------------------------------------------- agent statements *)
+
+agentStmt      = needsStmt | sayStmt | postStmt | tellStmt | noteStmt
+               | makeStmt | threadStmt | renameStmt
+               | grantStmt | revokeStmt | permStmt
+               | reactStmt | countStmt | panelStmt | askStmt ;
+
+needsStmt      = "needs" , predicate ;
+
+predicate      = predOr ;
+predOr         = predAnd , { "or" , predAnd } ;
+predAnd        = predTerm , { "and" , predTerm } ;
+predTerm       = "not" , predTerm
+               | "no" , entity                             (* absence *)
+               | entity , "has" , entity                   (* @user has @role(x) *)
+               | entity , "is" , entity                    (* @user is @owner *)
+               | entity                                    (* existence *)
+               | "(" , predicate , ")" ;
+
+sayStmt        = "say" , expression , [ "to" , "everyone" ] ;
+postStmt       = "post" , entity , ( expression | embed ) ;
+tellStmt       = "tell" , entity , ( expression | embed ) ;
+noteStmt       = "note" , expression ;
+
+embed          = "embed" , "{" , { embedField } , "}" ;
+embedField     = "title" , expression
+               | "body" , expression
+               | "colour" , expression
+               | "footer" , expression ;
+
+makeStmt       = "make" , makeKind , expression ,
+                 [ "under" , entity ] , [ permBlock ] , [ thenBlock ] ;
+makeKind       = "channel" | "category" | "role" ;
+permBlock      = "{" , { permLine } , "}" ;
+permLine       = ( "show" | "hide" ) , entity , [ "[" , permList , "]" ] ;
+permList       = identifier , { "," , identifier } ;
+thenBlock      = "then" , block ;
+
+threadStmt     = "thread" , expression , "at" , entity , [ thenBlock ] ;
+
+renameStmt     = "rename" , entityOrName ,
+                 ( "to" , expression
+                 | "prefix" , expression
+                 | "suffix" , expression ) ;
+entityOrName   = entity | identifier ;
+
+grantStmt      = "grant" , entity , [ "to" , entity ] ;
+revokeStmt     = "revoke" , entity , [ "from" , entity ] ;
+permStmt       = ( "show" | "hide" ) , entity , [ "[" , permList , "]" ] , [ "at" , entity ] ;
+
+reactStmt      = "react" , expression ;
+countStmt      = "count" , identifier , "up" , [ "by" , expression ] , [ thenBlock ] ;
+
+panelStmt      = "panel" , "at" , entity , "{" , { buttonLine } , "}" ;
+buttonLine     = "button" , text , [ buttonStyle ] , "->" , path ,
+                 [ "(" , [ arguments ] , ")" ] ;
+buttonStyle    = "primary" | "secondary" | "success" | "danger" ;
+
+askStmt        = "ask" , "{" , { askField } , "}" , "then" , path ;
+askField       = ( "line" | "paragraph" ) , text , [ "required" ] ;
+
+(* ------------------------------------------------------------ expressions *)
+
+expression     = orExpr ;
+orExpr         = andExpr , { "or" , andExpr } ;
+andExpr        = cmpExpr , { "and" , cmpExpr } ;
+
+(* Comparison does not chain: `a < b < c` is rejected, because in a language
+   without a type checker it silently means something no one intended. *)
+cmpExpr        = addExpr , [ cmpOp , addExpr ] ;
+cmpOp          = "is" | "isnt" | "<" | ">" | "<=" | ">=" ;
+
+addExpr        = mulExpr , { ( "+" | "-" ) , mulExpr } ;
+mulExpr        = unary , { ( "*" | "/" | "%" ) , unary } ;
+unary          = ( "not" | "-" ) , unary | postfix ;
+
+postfix        = primary , { "." , identifier
+                           | "[" , expression , "]"
+                           | "(" , [ arguments ] , ")"
+                           } ;
+
+arguments      = argument , { "," , argument } ;
+argument       = [ identifier , ":" ] , expression ;       (* named or positional *)
+
+primary        = number | text | "yes" | "no" | "none" | duration | clock
+               | listOrMap
+               | entity
+               | identifier
+               | anonVerb
+               | whenExpr
+               | "(" , expression , ")" ;
+
+anonVerb       = "verb" , "(" , [ params ] , ")" , block ;
+whenExpr       = "when" , expression , block , "otherwise" , ( whenExpr | block ) ;
+
+(* `[` opens a list or a map. Entries with `key:` make a map, entries without
+   make a list, and `[:]` is the empty map. Mixing the forms is rejected by the
+   parser rather than by the grammar. *)
+listOrMap      = "[" , "]"
+               | "[" , ":" , "]"
+               | "[" , listEntry , { "," , listEntry } , [ "," ] , "]" ;
+listEntry      = expression | expression , ":" , expression ;
+
+entity         = "@" , identifier , [ "(" , expression , ")" ] , { "." , identifier } ;
+
+(* ----------------------------------------------------------------- lexical *)
+
+identifier     = letter , { letter | digit | "_" } ;
+letter         = ? any Unicode letter ? | "_" ;
+digit          = "0".."9" ;
+
+number         = digit , { digit | "_" } , [ "." , digit , { digit | "_" } ] ;
+duration       = number , ( "s" | "m" | "h" | "d" | "w" ) ;
+clock          = digit , digit , ":" , digit , digit ;
+
+text           = '"' , { textChar | interpolation } , '"'
+               | '"""' , { ? any character ? } , '"""' ;
+textChar       = ? any character except '"' '\' '@' ? | escape ;
+escape         = "\" , ( "n" | "t" | '"' | "\" | "@" ) ;
+interpolation  = "@" , ( path | "(" , expression , ")" ) ;
+
+comment        = "--" , { ? any character except newline ? } ;
+
+(*
+ * Newlines are not significant. Statements are separated by their own
+ * structure, so no semicolons and no indentation rules.
+ *)

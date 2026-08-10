@@ -46,7 +46,7 @@ intent tickets {
     }
 
     then {
-      panel in @made {
+      panel at @made {
         button "Close" danger -> close(@made)
       }
       say "your ticket is @made.mention"
@@ -78,17 +78,19 @@ running system can load, validated against that system's actual capabilities.
 
 ## The vocabulary
 
-Cog deliberately shares no keywords with the mainstream. Every word is an
-ordinary English verb or noun, so a program reads as prose rather than as
-ceremony.
+Nothing that declares, binds or controls flow is borrowed — no `var`, `let`,
+`class`, `struct`, `func`, `if`, `for`, `while`, `return`, `in`, `with`, `as`.
+Every word is an ordinary English verb or noun, so a program reads as prose
+rather than as ceremony. The logical operators `and`, `or`, `not`, `is` and
+`from` are shared with Python on purpose; renaming those would be showing off.
 
 | | |
 |---|---|
 | **Binding** | `hold` immutable · `carry` mutable |
 | **Functions** | `verb` · `give` |
-| **Flow** | `when` / `otherwise` · `each … in` · `repeat while` · `stop` · `next` |
+| **Flow** | `when` / `otherwise` · `each … of` · `repeat until` · `stop` · `next` |
 | **Data** | `shape` · `yes` `no` `none` |
-| **Modules** | `bring … as` · `share` |
+| **Modules** | `bring` · `share` |
 | **Failure** | `attempt` / `rescue` · `fail` |
 | **Agent** | `intent` · `on` · `every` · `needs` · `make` · `then` |
 | **Effects** | `say` · `post` · `tell` · `note` · `grant` · `show` / `hide` · `count` |
