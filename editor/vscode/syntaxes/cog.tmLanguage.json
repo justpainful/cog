@@ -10,6 +10,18 @@
       "include": "#comments"
     },
     {
+      "include": "#embed-block"
+    },
+    {
+      "include": "#ask-block"
+    },
+    {
+      "include": "#panel-block"
+    },
+    {
+      "include": "#permission-list"
+    },
+    {
       "include": "#strings"
     },
     {
@@ -31,26 +43,18 @@
       "include": "#calls"
     },
     {
-      "include": "#parens"
-    },
-    {
       "include": "#operators"
     }
   ],
   "repository": {
     "comments": {
-      "patterns": [
-        {
-          "name": "comment.line.double-dash.cog",
-          "begin": "--",
-          "beginCaptures": {
-            "0": {
-              "name": "punctuation.definition.comment.cog"
-            }
-          },
-          "end": "$"
+      "match": "(--).*$",
+      "name": "comment.line.double-dash.cog",
+      "captures": {
+        "1": {
+          "name": "punctuation.definition.comment.cog"
         }
-      ]
+      }
     },
     "strings": {
       "patterns": [
@@ -63,14 +67,14 @@
       ]
     },
     "string-block": {
-      "name": "string.quoted.double.cog",
       "begin": "\"\"\"",
+      "end": "\"\"\"",
+      "name": "string.quoted.triple.cog",
       "beginCaptures": {
         "0": {
           "name": "punctuation.definition.string.begin.cog"
         }
       },
-      "end": "\"\"\"",
       "endCaptures": {
         "0": {
           "name": "punctuation.definition.string.end.cog"
@@ -78,22 +82,19 @@
       },
       "patterns": [
         {
-          "include": "#string-escape"
-        },
-        {
-          "include": "#interpolation"
+          "include": "#string-inner"
         }
       ]
     },
     "string-line": {
-      "name": "string.quoted.double.cog",
       "begin": "\"",
+      "end": "\"",
+      "name": "string.quoted.double.cog",
       "beginCaptures": {
         "0": {
           "name": "punctuation.definition.string.begin.cog"
         }
       },
-      "end": "\"|$",
       "endCaptures": {
         "0": {
           "name": "punctuation.definition.string.end.cog"
@@ -101,313 +102,301 @@
       },
       "patterns": [
         {
-          "include": "#string-escape"
-        },
-        {
-          "include": "#interpolation"
+          "include": "#string-inner"
         }
       ]
     },
-    "string-escape": {
+    "string-inner": {
       "patterns": [
         {
-          "name": "constant.character.escape.cog",
-          "match": "\\\\[nt\"\\\\@]"
+          "match": "@@",
+          "name": "constant.character.escape.cog"
         },
         {
-          "name": "invalid.illegal.unknown-escape.cog",
-          "match": "\\\\."
+          "match": "\\\\[nt\"\\\\@]",
+          "name": "constant.character.escape.cog"
+        },
+        {
+          "match": "\\\\.",
+          "name": "invalid.illegal.unknown-escape.cog"
+        },
+        {
+          "begin": "@\\(",
+          "end": "\\)",
+          "name": "meta.embedded.line.cog",
+          "beginCaptures": {
+            "0": {
+              "name": "punctuation.section.interpolation.begin.cog"
+            }
+          },
+          "endCaptures": {
+            "0": {
+              "name": "punctuation.section.interpolation.end.cog"
+            }
+          },
+          "patterns": [
+            {
+              "include": "$self"
+            }
+          ]
+        },
+        {
+          "match": "(@)([\\p{L}_][\\p{L}\\p{N}_]*(?:\\.[\\p{L}_][\\p{L}\\p{N}_]*)*)",
+          "name": "meta.embedded.line.cog",
+          "captures": {
+            "1": {
+              "name": "punctuation.definition.interpolation.cog"
+            },
+            "2": {
+              "name": "variable.other.interpolated.cog"
+            }
+          }
+        },
+        {
+          "match": "@",
+          "name": "invalid.illegal.empty-interpolation.cog"
         }
       ]
     },
-    "interpolation": {
-      "patterns": [
-        {
-          "include": "#interpolation-literal-at"
-        },
-        {
-          "include": "#interpolation-expression"
-        },
-        {
-          "include": "#interpolation-path"
-        },
-        {
-          "include": "#interpolation-empty"
-        }
-      ]
-    },
-    "interpolation-literal-at": {
-      "name": "constant.character.escape.cog",
-      "match": "@@"
-    },
-    "interpolation-expression": {
-      "name": "meta.embedded.line.cog",
-      "begin": "(@)(\\()",
+    "embed-block": {
+      "begin": "\\b(embed)\\s*(\\{)",
+      "end": "(\\})",
       "beginCaptures": {
         "1": {
-          "name": "punctuation.definition.interpolation.begin.cog"
+          "name": "keyword.other.effect.cog"
         },
         "2": {
-          "name": "punctuation.section.interpolation.begin.cog"
+          "name": "punctuation.section.block.begin.cog"
         }
       },
-      "end": "\\)",
       "endCaptures": {
-        "0": {
-          "name": "punctuation.section.interpolation.end.cog"
+        "1": {
+          "name": "punctuation.section.block.end.cog"
         }
       },
       "patterns": [
+        {
+          "match": "\\b(title|body|colour|footer)\\b",
+          "name": "variable.other.property.cog"
+        },
         {
           "include": "$self"
         }
       ]
     },
-    "interpolation-path": {
-      "name": "meta.embedded.line.cog",
-      "match": "(@)([\\p{L}_][\\p{L}\\p{N}_]*(?:\\.[\\p{L}_][\\p{L}\\p{N}_]*)*)",
-      "captures": {
+    "ask-block": {
+      "begin": "\\b(ask)\\s*(\\{)",
+      "end": "(\\})",
+      "beginCaptures": {
         "1": {
-          "name": "punctuation.definition.interpolation.cog"
+          "name": "keyword.other.effect.cog"
         },
         "2": {
-          "name": "variable.other.interpolated.cog"
+          "name": "punctuation.section.block.begin.cog"
         }
-      }
+      },
+      "endCaptures": {
+        "1": {
+          "name": "punctuation.section.block.end.cog"
+        }
+      },
+      "patterns": [
+        {
+          "match": "\\b(line|paragraph)\\b",
+          "name": "variable.other.property.cog"
+        },
+        {
+          "match": "\\b(required)\\b",
+          "name": "storage.modifier.cog"
+        },
+        {
+          "include": "$self"
+        }
+      ]
     },
-    "interpolation-empty": {
-      "name": "invalid.illegal.empty-interpolation.cog",
-      "match": "@(?![@(\\p{L}_])"
+    "panel-block": {
+      "begin": "\\b(panel)\\s+(at)\\b",
+      "end": "(?<=\\})",
+      "beginCaptures": {
+        "1": {
+          "name": "keyword.other.effect.cog"
+        },
+        "2": {
+          "name": "keyword.other.cog"
+        }
+      },
+      "patterns": [
+        {
+          "match": "\\b(button)\\b",
+          "name": "keyword.other.effect.cog"
+        },
+        {
+          "match": "\\b(secondary|primary|success|danger)\\b",
+          "name": "support.type.cog"
+        },
+        {
+          "include": "$self"
+        }
+      ]
+    },
+    "permission-list": {
+      "begin": "(\\[)(?=\\s*[a-z]+(\\s*,\\s*[a-z]+)*\\s*\\])",
+      "end": "(\\])",
+      "beginCaptures": {
+        "1": {
+          "name": "punctuation.section.brackets.begin.cog"
+        }
+      },
+      "endCaptures": {
+        "1": {
+          "name": "punctuation.section.brackets.end.cog"
+        }
+      },
+      "patterns": [
+        {
+          "match": "\\b[a-z][a-zA-Z]*\\b",
+          "name": "support.constant.permission.cog"
+        }
+      ]
     },
     "declarations": {
       "patterns": [
         {
-          "include": "#verb-declaration"
+          "match": "\\b(verb)\\s+([\\p{L}_][\\p{L}\\p{N}_]*(?:\\.[\\p{L}_][\\p{L}\\p{N}_]*)*)",
+          "captures": {
+            "1": {
+              "name": "keyword.declaration.cog"
+            },
+            "2": {
+              "name": "entity.name.function.cog"
+            }
+          }
         },
         {
-          "include": "#shape-declaration"
+          "match": "\\b(shape)\\s+([\\p{L}_][\\p{L}\\p{N}_]*)",
+          "captures": {
+            "1": {
+              "name": "keyword.declaration.cog"
+            },
+            "2": {
+              "name": "entity.name.type.cog"
+            }
+          }
         },
         {
-          "include": "#intent-declaration"
+          "match": "\\b(intent)\\s+([\\p{L}_][\\p{L}\\p{N}_]*)",
+          "captures": {
+            "1": {
+              "name": "keyword.declaration.cog"
+            },
+            "2": {
+              "name": "entity.name.namespace.cog"
+            }
+          }
         },
         {
-          "include": "#bring-declaration"
+          "match": "\\b(bring)\\s+([\\p{L}_][\\p{L}\\p{N}_]*)",
+          "captures": {
+            "1": {
+              "name": "keyword.declaration.cog"
+            },
+            "2": {
+              "name": "entity.name.namespace.cog"
+            }
+          }
         }
       ]
-    },
-    "verb-declaration": {
-      "match": "\\b(verb)\\b(?:[ \\t]+([\\p{L}_][\\p{L}\\p{N}_]*(?:\\.[\\p{L}_][\\p{L}\\p{N}_]*)*))?",
-      "captures": {
-        "1": {
-          "name": "keyword.declaration.cog"
-        },
-        "2": {
-          "name": "entity.name.function.cog"
-        }
-      }
-    },
-    "shape-declaration": {
-      "match": "\\b(shape)\\b(?:[ \\t]+([\\p{L}_][\\p{L}\\p{N}_]*))?",
-      "captures": {
-        "1": {
-          "name": "keyword.declaration.cog"
-        },
-        "2": {
-          "name": "entity.name.type.cog"
-        }
-      }
-    },
-    "intent-declaration": {
-      "match": "\\b(intent)\\b(?:[ \\t]+([\\p{L}_][\\p{L}\\p{N}_]*))?",
-      "captures": {
-        "1": {
-          "name": "keyword.declaration.cog"
-        },
-        "2": {
-          "name": "entity.name.namespace.cog"
-        }
-      }
-    },
-    "bring-declaration": {
-      "match": "\\b(bring)\\b(?:[ \\t]+([\\p{L}_][\\p{L}\\p{N}_]*))?",
-      "captures": {
-        "1": {
-          "name": "keyword.declaration.cog"
-        },
-        "2": {
-          "name": "entity.name.namespace.cog"
-        }
-      }
     },
     "entities": {
-      "patterns": [
-        {
-          "include": "#entity-call"
-        },
-        {
-          "include": "#entity-plain"
-        }
-      ]
-    },
-    "entity-call": {
-      "begin": "(@)([\\p{L}_][\\p{L}\\p{N}_]*)(\\()",
-      "beginCaptures": {
-        "1": {
-          "name": "punctuation.definition.entity.cog"
-        },
-        "2": {
-          "name": "variable.language.entity.cog"
-        },
-        "3": {
-          "name": "punctuation.section.arguments.begin.cog"
-        }
-      },
-      "end": "(\\))((?:\\.[\\p{L}_][\\p{L}\\p{N}_]*)*)",
-      "endCaptures": {
-        "1": {
-          "name": "punctuation.section.arguments.end.cog"
-        },
-        "2": {
-          "name": "variable.language.entity.cog"
-        }
-      },
-      "patterns": [
-        {
-          "include": "$self"
-        }
-      ]
-    },
-    "entity-plain": {
-      "match": "(@)([\\p{L}_][\\p{L}\\p{N}_]*)((?:\\.[\\p{L}_][\\p{L}\\p{N}_]*)*)",
+      "match": "(@)([\\p{L}_][\\p{L}\\p{N}_]*)",
       "captures": {
         "1": {
           "name": "punctuation.definition.entity.cog"
         },
         "2": {
-          "name": "variable.language.entity.cog"
-        },
-        "3": {
           "name": "variable.language.entity.cog"
         }
       }
     },
     "constants": {
-      "match": "\b(none|yes|no)\b",
+      "match": "\\b(none|yes|no)\\b",
       "name": "constant.language.cog"
     },
     "keywords": {
       "patterns": [
         {
-          "include": "#keyword-declaration"
+          "match": "\\b(intent|bring|carry|every|shape|share|hold|verb|on)\\b",
+          "name": "keyword.declaration.cog"
         },
         {
-          "include": "#keyword-binding"
+          "match": "\\b(otherwise|attempt|repeat|rescue|times|until|each|fail|give|next|stop|when|of)\\b",
+          "name": "keyword.control.cog"
         },
         {
-          "include": "#keyword-control"
+          "match": "\\b(isnt|and|not|is|or)\\b",
+          "name": "keyword.operator.word.cog"
         },
         {
-          "include": "#keyword-operator-word"
+          "match": "\\b(needs|make|then)\\b",
+          "name": "keyword.other.effect.cog"
         },
         {
-          "include": "#keyword-effect"
+          "match": "^\\s*(rename|revoke|thread|count|grant|panel|react|hide|note|post|show|tell|ask|say)\\b",
+          "captures": {
+            "1": {
+              "name": "keyword.other.effect.cog"
+            }
+          }
         },
         {
-          "include": "#contextual-pinned"
+          "match": "\\b(contains|everyone|prefix|starts|suffix|under|has)\\b",
+          "name": "keyword.other.cog"
+        },
+        {
+          "match": "(?<=\\bmake\\s{1,20})\\b(category|channel|role)\\b",
+          "name": "support.type.cog"
+        },
+        {
+          "match": "(?<=\\bevery\\s{1,20})\\b(wednesday|saturday|thursday|tuesday|friday|monday|sunday|month|day)\\b",
+          "name": "support.constant.cog"
+        },
+        {
+          "match": "(?<=\\bneeds\\s{1,20})\\b(no)\\b",
+          "name": "keyword.operator.word.cog"
+        },
+        {
+          "match": "\\b(at|to|from|by|up)\\b(?=\\s+@)",
+          "name": "keyword.other.cog"
         }
       ]
-    },
-    "keyword-declaration": {
-      "match": "\b(intent|shape|bring|share|every|verb|on)\b",
-      "name": "keyword.declaration.cog"
-    },
-    "keyword-control": {
-      "match": "\b(otherwise|attempt|repeat|rescue|until|times|when|each|give|stop|next|fail|of)\b",
-      "name": "keyword.control.cog"
-    },
-    "keyword-operator-word": {
-      "match": "\b(isnt|and|not|or|is)\b",
-      "name": "keyword.operator.word.cog"
-    },
-    "keyword-effect": {
-      "match": "\b(needs|make|then)\b",
-      "name": "keyword.other.effect.cog"
     },
     "numbers": {
       "patterns": [
         {
-          "include": "#clock-time"
+          "match": "\\b\\d{2}:\\d{2}\\b",
+          "name": "constant.numeric.time.cog"
         },
         {
-          "include": "#duration"
+          "match": "\\b\\d[\\d_]*(\\.\\d[\\d_]*)?[smhdw]\\b",
+          "name": "constant.numeric.duration.cog"
         },
         {
-          "include": "#number"
+          "match": "\\b\\d[\\d_]*(\\.\\d[\\d_]*)?\\b",
+          "name": "constant.numeric.cog"
         }
       ]
-    },
-    "clock-time": {
-      "name": "constant.numeric.time.cog",
-      "match": "\\b\\d{2}:\\d{2}\\b"
-    },
-    "duration": {
-      "name": "constant.numeric.duration.cog",
-      "match": "\\b\\d[\\d_]*(?:\\.\\d[\\d_]*)?[smhdw]\\b"
-    },
-    "number": {
-      "name": "constant.numeric.cog",
-      "match": "\\b\\d[\\d_]*(?:\\.\\d[\\d_]*)?\\b"
     },
     "calls": {
-      "name": "entity.name.function.call.cog",
-      "match": "[\\p{L}_][\\p{L}\\p{N}_]*(?=\\()"
-    },
-    "parens": {
-      "begin": "\\(",
-      "beginCaptures": {
-        "0": {
-          "name": "punctuation.section.group.begin.cog"
+      "match": "([\\p{L}_][\\p{L}\\p{N}_]*)\\s*(?=\\()",
+      "captures": {
+        "1": {
+          "name": "entity.name.function.call.cog"
         }
-      },
-      "end": "\\)",
-      "endCaptures": {
-        "0": {
-          "name": "punctuation.section.group.end.cog"
-        }
-      },
-      "patterns": [
-        {
-          "include": "$self"
-        }
-      ]
+      }
     },
     "operators": {
-      "name": "keyword.operator.cog",
-      "match": "->|<=|>=|[-+*/%<>=]"
-    },
-    "contextual-pinned": {
-      "patterns": [
-        {
-          "match": "(?<=\bmakes{1,20})\b(channel|category|role)\b",
-          "name": "support.type.cog"
-        },
-        {
-          "match": "(?<=\beverys{1,20})\b(day|month|monday|tuesday|wednesday|thursday|friday|saturday|sunday)\b",
-          "name": "support.constant.cog"
-        },
-        {
-          "match": "\b(primary|secondary|success|danger)\b(?=s{0,20}->)",
-          "name": "support.type.cog"
-        },
-        {
-          "match": "(?<=\bneedss{1,20})\b(no)\b",
-          "name": "keyword.operator.word.cog"
-        }
-      ]
-    },
-    "keyword-binding": {
-      "match": "\b(carry|hold)\b",
-      "name": "keyword.declaration.cog"
+      "match": "->|<=|>=|[-+*/%<>=]",
+      "name": "keyword.operator.cog"
     }
   }
 }
