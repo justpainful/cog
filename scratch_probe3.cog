@@ -1,0 +1,13 @@
+verb sqrt(n) {
+  when n is 0 { give 0 }
+  carry guess = n
+  carry prev = 0
+  carry steps = 0
+  repeat until guess is prev or steps > 80 {
+    prev = guess
+    guess = (guess + n / guess) / 2
+    steps = steps + 1
+  }
+  give guess
+}
+each n of [2, 3, 10, 1, 0.25, 1000000, 2.5, 0.000001, 1000000000000, 0.0001, 1_000_000_000_000_000_000] { note "@n -> @(sqrt(n))" }

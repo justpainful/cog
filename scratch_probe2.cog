@@ -1,0 +1,6 @@
+bring p "std/_probe"
+note p.title("hi")
+note p.answer
+note p.secret
+hold f = p.title
+note f("yo")

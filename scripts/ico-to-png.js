@@ -36,7 +36,7 @@ function chunk(type, data) {
   return out;
 }
 
-function encodePng(width, height, rgba) {
+export function encodePng(width, height, rgba) {
   const ihdr = Buffer.alloc(13);
   ihdr.writeUInt32BE(width, 0);
   ihdr.writeUInt32BE(height, 4);
