@@ -31,6 +31,14 @@ a parser.
 Four constraints shaped every decision below. They are recorded because a rule
 you cannot recite gets broken by the next feature.
 
+**Two strengths of keyword.** Reserving all 84 words makes the language
+unusable — `carry count = 0` would be illegal, and so would naming anything
+`title`, `body`, `line`, `role` or `day`. Only the words that structure a
+program are reserved everywhere. The rest are **contextual**: they mean
+something in the one position the grammar expects them, and are ordinary
+identifiers anywhere else. This was found by writing the examples in this
+document and watching them fail to parse.
+
 **Structural keywords are Cog's own.** Nothing that declares, binds or
 controls flow is borrowed. No `var`, `let`, `class`, `struct`, `func`,
 `function`, `if`, `else`, `for`, `while`, `return`, `true`, `false`, `null`,
@@ -319,7 +327,9 @@ One file is one module. `share` makes a name public; everything else is private.
 
 ```cog
 -- std/text.cog
-share verb upper(s) { ... }
+share verb upper(s) {
+  give s.uppercase
+}
 
 -- app.cog
 bring text "std/text"
@@ -359,8 +369,12 @@ describes constructs that `cog build` lowers onto a host runtime.
 
 ```cog
 intent tickets {
-  verb open { ... }
-  verb close(target) { ... }
+  verb open {
+    say "opening"
+  }
+  verb close(target) {
+    rename target prefix "closed-"
+  }
 }
 ```
 
@@ -376,7 +390,7 @@ A guard, checked before the verb runs and before every nested verb it calls.
 needs @user has @role("Operator")
 needs no @channel("ticket-@user.name")
 needs @user is @owner
-needs here is @channel("ticket-open")
+needs @here is @channel("ticket-open")
 needs @user has @role("Operator") and not @channel("archive")
 ```
 
@@ -513,7 +527,26 @@ better than half-lowering it.
 
 ## 14. Reserved words
 
-All 84 of them, generated from GRAMMAR.ebnf and checked by `tests/keywords.js`:
+### Reserved everywhere
+
+These 33 structure a program. Using one as a name is an error.
+
+```
+and        attempt    bring      carry      each       every      fail
+give       hold       intent     is         isnt       make       needs
+next       no         none       not        of         on         or
+otherwise  repeat     rescue     shape      share      stop       then
+times      until      verb       when       yes
+```
+
+### Contextual
+
+Meaningful only where the grammar expects them, and ordinary identifiers
+everywhere else. `note "hi"` is an effect; `note` is also a fine name for a
+variable holding a note.
+
+All 84 words together, generated from GRAMMAR.ebnf and checked by
+`tests/keywords.js`:
 
 ```
 and        ask        at         attempt    body       bring      button

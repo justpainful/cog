@@ -10,7 +10,7 @@
 // one, which is the single easiest thing to get wrong here.
 
 import { LexError } from './errors.js';
-import { KEYWORDS } from './keywords.js';
+import { HARD } from './keywords.js';
 
 export const T = {
   NUMBER: 'number',
@@ -256,7 +256,9 @@ export function tokenize(source, file = '<input>') {
     if (isLetter(ch)) {
       let name = '';
       while (i < source.length && isIdentPart(source[i])) name += source[i++];
-      push(KEYWORDS.has(name) ? T.KEYWORD : T.IDENT, name, startLine, startCol);
+      // Only the structurally reserved words become keyword tokens. Contextual
+      // words stay identifiers and the parser recognises them by position.
+      push(HARD.has(name) ? T.KEYWORD : T.IDENT, name, startLine, startCol);
       continue;
     }
 

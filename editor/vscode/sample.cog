@@ -1,0 +1,270 @@
+-- sample.cog — every construct in SPEC.md, for eyeballing the grammar.
+-- There are no block comments, so this is the only comment form.
+
+-- 9. modules ---------------------------------------------------------------
+bring text "std/text"
+bring helpers "./helpers"
+
+-- 2.3 numbers, 2.5 durations and clock times -------------------------------
+hold answer = 42
+hold ratio = 3.5
+hold big = 1_000_000
+hold small = 0.001
+hold pause = 30s
+hold short = 5m
+hold hour = 2h
+hold days = 3d
+hold week = 1w
+hold half = 0.5h
+hold early = 00:03
+hold standup = 14:30
+
+-- 2.6 booleans and absence -------------------------------------------------
+hold ok = yes
+hold bad = no
+hold missing = none
+
+-- 2.2 identifiers are Unicode ----------------------------------------------
+hold عدد = 3
+hold número = 4
+hold _private = 5
+carry household = 0
+carry counter = 0
+counter = counter + 1
+
+-- 2.4 text -----------------------------------------------------------------
+hold plain = "plain"
+hold escaped = "line one\nline two\ttabbed \"quoted\" back\\slash at\@sign"
+hold block = """
+  a block of text
+  keeping its line breaks
+  with @user.name interpolated and @@ kept literal
+"""
+hold field = "hello @user.name"
+hold binding = "you are number @counter"
+hold expr = "total: @(ratio * answer)"
+hold literalAt = "reach me @@example"
+hold mixed = "@@not-an-interpolation but @counter is one, and @@@user is a literal @ then a path"
+hold deep = "@a.b.c ends here."
+
+-- 3. values ----------------------------------------------------------------
+hold list = [1, 2, 3]
+hold empty = []
+hold map = [name: "kuroi", age: 3]
+hold emptyMap = [:]
+hold nested = [1, [2, 3], [k: "v"]]
+
+-- 8. shapes ----------------------------------------------------------------
+shape Ticket {
+  owner
+  opened = no
+  tags = []
+}
+
+share shape Public {
+  id
+}
+
+hold t = Ticket(owner: @user)
+note t.owner
+hold closed = t.change(opened: yes)
+
+-- 7. verbs -----------------------------------------------------------------
+verb greet(name) {
+  give "hello " + name
+}
+
+verb greetWithDefault(name, greeting = "hello") {
+  give greeting + " " + name
+}
+
+verb tally(items, start) {
+  carry total = start
+  each n of items { total = total + n }
+  give total
+}
+
+share verb upper(s) {
+  give text.upper(s)
+}
+
+hold double = verb (n) { give n * 2 }
+hold results = list.map(double)
+note text.upper("hi")
+
+-- 5.1 operators ------------------------------------------------------------
+hold arithmetic = 1 + 2 - 3 * 4 / 5 % 6
+hold unary = -answer
+hold compare = answer is 42 or answer isnt 41
+hold ordered = ratio < 4 and ratio > 3 and ratio <= 4 and ratio >= 3
+hold negated = not bad
+hold grouped = (1 + 2) * (3 - 4)
+
+-- 5.2 access ---------------------------------------------------------------
+hold aField = t.owner
+hold anIndex = list[0]
+hold aKey = map["kuroi"]
+hold aCall = greet("world")
+
+-- 6.1 when / otherwise -----------------------------------------------------
+when counter > 10 {
+  note "many"
+} otherwise when counter > 0 {
+  note "some"
+} otherwise {
+  note "none at all"
+}
+
+hold label = when counter > 0 { "some" } otherwise { "none" }
+
+-- 6.2 each -----------------------------------------------------------------
+each item of list {
+  note item
+}
+
+each key, value of map {
+  note "@key = @value"
+}
+
+-- 6.3 repeat, 6.4 stop and next --------------------------------------------
+repeat until counter is 10 {
+  counter = counter + 1
+  when counter is 5 { next }
+  when counter is 9 { stop }
+}
+
+repeat 5 times {
+  note "again"
+}
+
+-- 10. failure --------------------------------------------------------------
+attempt {
+  hold data = parse(plain)
+  note data.name
+} rescue problem {
+  note "could not read it: @problem.message at @problem.where"
+}
+
+verb mustHaveOwner(ticket) {
+  when ticket.owner is none {
+    fail "the ticket has no owner"
+  }
+}
+
+-- 12. entities ------------------------------------------------------------
+note @user.name
+note @here.id
+note @everyone.mention
+note @owner.name
+note @guild.name
+note @today
+note @now
+note @count
+note @channel("welcome").name
+note @role("Operator").id
+note @category("Tickets").name
+
+-- 11.1 intent, 11.2 needs, 11.3 effects ------------------------------------
+intent tickets {
+
+  verb open {
+    needs @user has @role("Operator")
+    needs no @channel("ticket-@user.name")
+    needs @user is @owner
+    needs here is @channel("ticket-open")
+    needs @user has @role("Operator") and not @channel("archive")
+    needs (@user has @role("Operator") or @user is @owner) and not @role("Muted")
+
+    say "opening"
+    say "opened for everyone" to everyone
+    post @channel("log") "a ticket was opened by @user.mention"
+    post @channel("log") embed {
+      title "Ticket opened"
+      body "opened by @user.mention at @now"
+      colour blue
+      footer "cog"
+    }
+    tell @user "your ticket is on the way"
+    note "a ticket was opened"
+    react "👀"
+    count opened up by 1
+    thread "ticket talk" at @channel("support")
+    rename @channel("support") to "support-open"
+    rename target prefix "[open] "
+    rename target suffix " (open)"
+    grant @role("Reporter") to @user
+    revoke @role("Muted") from @user
+    show @user [read, write]
+    hide @everyone
+    show @user [read, write] at @channel("support")
+
+    -- 11.4 then and @made
+    make channel "ticket-@user.name" under @category("Tickets") {
+      hide @everyone
+      show @user [read, write, history]
+    }
+    then {
+      panel at @made {
+        button "Close" danger -> tickets.close(@made)
+        button "Keep" primary -> tickets.keep
+        button "Escalate" secondary -> tickets.escalate(@made, @user)
+        button "Resolve" success -> tickets.resolve(@made)
+      }
+      say "your ticket is @made.mention"
+    }
+
+    make role "Reporter"
+    make category "Tickets"
+
+    ask {
+      line "reason"
+      paragraph "details" required
+    }
+    then tickets.record
+  }
+
+  verb close(target) {
+    needs @user has @role("Operator")
+    note "closing @target.name"
+  }
+
+  -- 11.5 on
+  on member.joins {
+    post @channel("welcome") "welcome @user.mention"
+  }
+
+  on message.posted when contains "cog" {
+    react "👀"
+  }
+
+  on message.posted when starts "!" and at @channel("support") and from @role("Operator") {
+    note "an operator spoke in support"
+  }
+
+  on message.posted when is "ping" {
+    say "pong"
+  }
+
+  -- 11.6 every
+  every day at 00:03 { post @channel("command-log") "── @today ──" }
+  every 5m { note "tick" }
+  every monday at 09:00 { post @channel("team") "week planning" }
+  every tuesday at 09:00 { note "tue" }
+  every wednesday at 09:00 { note "wed" }
+  every thursday at 09:00 { note "thu" }
+  every friday at 09:00 { note "fri" }
+  every saturday at 09:00 { note "sat" }
+  every sunday at 09:00 { note "sun" }
+  every month at 00:00 { note "monthly" }
+}
+
+-- keyword boundaries: none of these words should highlight as keywords -----
+hold household = 1
+hold onward = 2
+hold shapes = 3
+hold verbose = 4
+hold notice = 5
+hold isnter = 6
+hold today = 7
+hold monday_ish = 8
+hold uppercount = 9

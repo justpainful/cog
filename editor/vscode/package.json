@@ -1,0 +1,45 @@
+{
+  "name": "cog",
+  "displayName": "Cog",
+  "description": "Syntax highlighting for the Cog language.",
+  "version": "0.0.1",
+  "publisher": "justpainful",
+  "license": "MIT",
+  "engines": {
+    "vscode": "^1.75.0"
+  },
+  "categories": [
+    "Programming Languages"
+  ],
+  "keywords": [
+    "cog",
+    "agent",
+    "syntax"
+  ],
+  "contributes": {
+    "languages": [
+      {
+        "id": "cog",
+        "aliases": [
+          "Cog",
+          "cog"
+        ],
+        "extensions": [
+          ".cog"
+        ],
+        "configuration": "./language-configuration.json",
+        "icon": {
+          "light": "./icons/cog.png",
+          "dark": "./icons/cog.png"
+        }
+      }
+    ],
+    "grammars": [
+      {
+        "language": "cog",
+        "scopeName": "source.cog",
+        "path": "./syntaxes/cog.tmLanguage.json"
+      }
+    ]
+  }
+}

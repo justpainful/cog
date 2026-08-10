@@ -1,7 +1,7 @@
 // Lexer tests. Every construct in SPEC.md §2, and every error it can raise.
 
 import { tokenize, T } from '../src/lexer.js';
-import { KEYWORDS } from '../src/keywords.js';
+import { KEYWORDS, HARD, SOFT } from '../src/keywords.js';
 import { LexError } from '../src/errors.js';
 import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
@@ -91,7 +91,11 @@ t('underscore starts an identifier', kinds('_x')[0] === T.IDENT);
 t('digits inside an identifier', lex('a1b2').length === 1);
 t('Arabic identifier', kinds('عدد')[0] === T.IDENT);
 t('accented identifier', kinds('número')[0] === T.IDENT);
-t('every spec keyword lexes as a keyword', [...KEYWORDS].every((k) => kinds(k)[0] === T.KEYWORD));
+t('every hard keyword lexes as a keyword', [...HARD].every((k) => kinds(k)[0] === T.KEYWORD));
+// Contextual words are identifiers to the lexer; the parser recognises them by
+// position. Otherwise `carry count = 0` would be illegal.
+t('every contextual word lexes as an identifier', [...SOFT].every((k) => kinds(k)[0] === T.IDENT));
+t('a contextual word can be a name', kinds('count')[0] === T.IDENT);
 
 describe('entities');
 t('bare entity', lex('@user')[0].value === 'user');
@@ -203,7 +207,7 @@ if (tokens) {
   t('the interpolated one is a text part',
     tokens.filter((x) => x.type === T.TEXT).some((x) => x.value.some((p) => p.expression === 'user.mention')));
   t('found the durations and clock', tokens.some((x) => x.type === T.CLOCK));
-  t('no identifier is secretly a keyword', tokens.filter((x) => x.type === T.IDENT).every((x) => !KEYWORDS.has(x.value)));
+  t('no identifier is secretly a hard keyword', tokens.filter((x) => x.type === T.IDENT).every((x) => !HARD.has(x.value)));
 }
 
 describe('the spec examples lex');
